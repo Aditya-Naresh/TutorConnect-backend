@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.utils.translation import gettext_lazy as _
-from .managers import UserManager
+from .managers import UserManager, ProxyManager
 from rest_framework_simplejwt.tokens import RefreshToken
 # Create your models here.
 AUTH_PROVIDERS = {
@@ -56,13 +56,13 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 class Student(User):
     base_role = User.Role.STUDENT
-
+    objects = ProxyManager()
     class Meta:
         proxy = True
 
 
 class Tutor(User):
     base_role = User.Role.TUTOR
-
+    objects = ProxyManager()
     class Meta:
         proxy = True
