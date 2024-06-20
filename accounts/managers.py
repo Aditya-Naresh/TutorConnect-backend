@@ -61,5 +61,7 @@ class UserManager(BaseUserManager):
         user.save()
         return user
     
+
+class ProxyManager(UserManager):
     def get_queryset(self) -> QuerySet:
         return super().get_queryset().filter(role = self.model.base_role)
