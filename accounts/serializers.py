@@ -50,4 +50,33 @@ class UserRegisterSerializer(serializers.ModelSerializer):
 class EmailConfirmationSerializer(serializers.Serializer):
     uid = serializers.CharField(min_length = 1, write_only = True)
     token = serializers.CharField(min_length = 3, write_only = True)
-    
+
+
+# Login Serializer
+class LoginSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(max_length=255, min_length = 6)
+    password = serializers.CharField(max_length = 68, write_only = True)
+    full_name = serializers.CharField(max_length=255, read_only = True)
+    access_token = serializers.CharField(max_length = 255, read_only = True)
+    refresh_token = serializers.CharField(max_length = 255, read_only = True)
+    role = serializers.CharField(max_length = 100, read_only = True)
+
+    class Meta:
+        model = User
+        fields = ['email', 'password', 'full_name', 'role', 'access_token', 'refresh_token']
+
+    def validate(self, attrs):
+        email = attrs.get('email')
+        password = attrs.get('password')
+        request = self.context.get('request')
+        user = authenticate(request, email = email, password= password)
+        if not user:
+            raise AuthenticationFailed("Invalid credentials try again")
+        user_tokens = user.tokens()
+        return{
+            "email":user.email,
+            "full_name":user.get_full_name,
+            "role": user.role,
+            "access_token": str(user_tokens.get('access')),
+            "refresh_token": str(user_tokens.get('refresh'))
+        }
