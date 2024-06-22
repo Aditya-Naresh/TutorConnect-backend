@@ -43,3 +43,11 @@ class UserRegisterSerializer(serializers.ModelSerializer):
             raise ValidationError({"message": "A user with this email already exists."})
 
         return user
+    
+
+# Mail Confirmation Serializer
+
+class EmailConfirmationSerializer(serializers.Serializer):
+    uid = serializers.CharField(min_length = 1, write_only = True)
+    token = serializers.CharField(min_length = 3, write_only = True)
+    
