@@ -7,7 +7,8 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_str, force_bytes
 from django.contrib.sites.shortcuts import get_current_site
 from django.urls import reverse
-
+from django.db import IntegrityError
+from rest_framework.exceptions import ValidationError
 
 
 # User SignUp
@@ -31,10 +32,14 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         is_tutor = validated_data.pop("is_tutor", False)
         user_model = Tutor if is_tutor else Student
 
-        user = user_model.objects.create_user(
-            email = validated_data['email'],
-            first_name = validated_data['first_name'],
-            last_name = validated_data['last_name'],
-            password = validated_data['password']
-        )
+        try:
+            user = user_model.objects.create_user(
+                email=validated_data['email'],
+                first_name=validated_data['first_name'],
+                last_name=validated_data['last_name'],
+                password=validated_data['password']
+            )
+        except IntegrityError:
+            raise ValidationError({"message": "A user with this email already exists."})
+
         return user
