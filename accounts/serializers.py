@@ -9,6 +9,7 @@ from django.contrib.sites.shortcuts import get_current_site
 from django.urls import reverse
 from django.db import IntegrityError
 from rest_framework.exceptions import ValidationError
+from .utils import send_normal_email
 
 
 # User SignUp
@@ -80,3 +81,51 @@ class LoginSerializer(serializers.ModelSerializer):
             "access_token": str(user_tokens.get('access')),
             "refresh_token": str(user_tokens.get('refresh'))
         }
+    
+
+# Password Reset
+class PasswordResetSerializer(serializers.Serializer):
+    email = serializers.EmailField(max_length=255)
+
+    class Meta:
+        fields = ['email']
+    
+    def validate(self, attrs):
+        email = attrs.get('email')
+        if User.objects.filter(email = email).exists():
+            user = User.objects.get(email=email)
+            uidb64 = urlsafe_base64_encode(force_bytes(user.id))
+            token = PasswordResetTokenGenerator().make_token(user)
+            request = self.context.get('request')
+            site_domain = "http://localhost:5173"
+            abslink=f"{site_domain}/reset-password/{uidb64}/{token}"
+            email_body = f"Hi use the link below to reset your password \n {abslink}"
+
+            data = {
+                'email_body': email_body,
+                'email_subject': "Reset Password",
+                'to_email': user.email
+            }
+            send_normal_email(data)
+        else:
+            raise ValidationError("Email address is not registered")
+
+        return super().validate(attrs)
+    
+
+class SetNewPasswordSerializer(serializers.Serializer):
+    password = serializers.CharField(max_length=100, min_length=6, write_only=True)
+    confirm_password = serializers.CharField(max_length=100, min_length=6, write_only=True)
+    uidb64 = serializers.CharField(min_length=1, write_only=True)
+    token = serializers.CharField(min_length=3, write_only=True)
+
+    def validate(self, attrs):
+        password = attrs.get('password')
+        confirm_password = attrs.get('confirm_password')
+        uidb64 = attrs.get('uidb64')
+        token = attrs.get('token')
+
+        if password!= confirm_password:
+            raise serializers.ValidationError("Passwords do not match")
+
+        return attrs
