@@ -1,5 +1,5 @@
 from rest_framework.generics import GenericAPIView
-from . serializers import UserRegisterSerializer, EmailConfirmationSerializer
+from . serializers import UserRegisterSerializer, EmailConfirmationSerializer, LoginSerializer
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
@@ -76,7 +76,16 @@ class EmailConfirmationView(GenericAPIView):
             return Response({
                 "error" : "Invalid link"
             }, status=status.HTTP_400_BAD_REQUEST)
+        
 
-    # Login
+# Login
+class LoginUserView(GenericAPIView):
+    serializer_class = LoginSerializer
 
-    # Forgot Password
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data, context={'request':request})
+        if serializer.is_valid(raise_exception=True):
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+
+# Forgot Password
