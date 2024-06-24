@@ -1,5 +1,5 @@
 from rest_framework.generics import GenericAPIView
-from . serializers import UserRegisterSerializer, EmailConfirmationSerializer, LoginSerializer, PasswordResetSerializer,SetNewPasswordSerializer
+from . serializers import UserRegisterSerializer, EmailConfirmationSerializer, LoginSerializer, PasswordResetSerializer,SetNewPasswordSerializer,LogoutSerializer
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
@@ -14,6 +14,7 @@ from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
+from rest_framework.permissions import IsAuthenticated
 from . models import User
 # Create your views here.
 
@@ -86,6 +87,7 @@ class EmailConfirmationView(GenericAPIView):
 # Login
 class LoginUserView(GenericAPIView):
     serializer_class = LoginSerializer
+    queryset = User.objects.all()
 
     def post(self, request):
         serializer = self.serializer_class(data=request.data, context={'request':request})
@@ -142,3 +144,16 @@ class SetNewPasswordView(GenericAPIView):
             return Response({'success': True, 'message': "Password reset successful"}, status=status.HTTP_200_OK)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+#  Logout
+class LogoutUserView(GenericAPIView):
+    serializer_class = LogoutSerializer
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
