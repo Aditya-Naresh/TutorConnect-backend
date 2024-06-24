@@ -10,17 +10,22 @@ from django.urls import reverse
 from django.db import IntegrityError
 from rest_framework.exceptions import ValidationError
 from .utils import send_normal_email
+from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
 
 # User SignUp
 
 class UserRegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(max_length = 68, min_length = 6, write_only = True)
-    confirm_password = serializers.CharField(max_length = 68, min_length = 6, write_only = True)
-    is_tutor = serializers.BooleanField(write_only = True)
+    password = serializers.CharField(
+        max_length=68, min_length=6, write_only=True)
+    confirm_password = serializers.CharField(
+        max_length=68, min_length=6, write_only=True)
+    is_tutor = serializers.BooleanField(write_only=True)
+
     class Meta:
         model = User
-        fields = ['email', 'first_name', "last_name", "password", "confirm_password", "is_tutor"]
+        fields = ['email', 'first_name', "last_name",
+            "password", "confirm_password", "is_tutor"]
 
     def validate(self, attrs):
         password = attrs.get('password', "")
@@ -28,7 +33,7 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         if password != confirm_password:
             raise serializers.ValidationError("Passwords do not match")
         return attrs
-    
+
     def create(self, validated_data):
         is_tutor = validated_data.pop("is_tutor", False)
         user_model = Tutor if is_tutor else Student
@@ -41,38 +46,48 @@ class UserRegisterSerializer(serializers.ModelSerializer):
                 password=validated_data['password']
             )
         except IntegrityError:
-            raise ValidationError({"message": "A user with this email already exists."})
+            raise ValidationError(
+                {"message": "A user with this email already exists."})
 
         return user
-    
+
 
 # Mail Confirmation Serializer
 
 class EmailConfirmationSerializer(serializers.Serializer):
-    uid = serializers.CharField(min_length = 1, write_only = True)
-    token = serializers.CharField(min_length = 3, write_only = True)
+    uid = serializers.CharField(min_length=1, write_only=True)
+    token = serializers.CharField(min_length=3, write_only=True)
 
 
 # Login Serializer
 class LoginSerializer(serializers.ModelSerializer):
-    email = serializers.EmailField(max_length=255, min_length = 6)
-    password = serializers.CharField(max_length = 68, write_only = True)
-    full_name = serializers.CharField(max_length=255, read_only = True)
-    access_token = serializers.CharField(max_length = 255, read_only = True)
-    refresh_token = serializers.CharField(max_length = 255, read_only = True)
-    role = serializers.CharField(max_length = 100, read_only = True)
+    email = serializers.EmailField(max_length=255, min_length=6)
+    password = serializers.CharField(max_length=68, write_only=True)
+    full_name = serializers.CharField(max_length=255, read_only=True)
+    access_token = serializers.CharField(max_length=255, read_only=True)
+    refresh_token = serializers.CharField(max_length=255, read_only=True)
+    role = serializers.CharField(max_length=100, read_only=True)
 
     class Meta:
         model = User
-        fields = ['email', 'password', 'full_name', 'role', 'access_token', 'refresh_token']
+        fields = ['email', 'password', 'full_name',
+            'role', 'access_token', 'refresh_token']
 
     def validate(self, attrs):
         email = attrs.get('email')
         password = attrs.get('password')
         request = self.context.get('request')
-        user = authenticate(request, email = email, password= password)
-        if not user:
-            raise AuthenticationFailed("Invalid credentials try again")
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise AuthenticationFailed("Invalid credentials, try again")
+
+        if user.is_blocked:
+            raise AuthenticationFailed("Your account is blocked, please contact support")
+    
+        if not user.check_password(password):
+            raise AuthenticationFailed("Invalid credentials, try again")
         user_tokens = user.tokens()
         return{
             "email":user.email,
@@ -129,3 +144,26 @@ class SetNewPasswordSerializer(serializers.Serializer):
             raise serializers.ValidationError("Passwords do not match")
 
         return attrs
+
+
+
+class LogoutSerializer(serializers.Serializer):
+    refresh_token=serializers.CharField()
+    default_error_message = {
+        'bad_token': ('Token is Invalid or has expired')
+    }
+
+    def validate(self, attrs):
+        self.token = attrs.get('refresh_token')
+        return attrs
+    
+    def save(self, **kwargs):
+        try:
+            token = RefreshToken(self.token)
+            token.blacklist()
+        except TokenError:
+            return self.fail('bad_token')
+        
+
+
+
