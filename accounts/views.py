@@ -7,7 +7,8 @@ from . serializers import (
     SetNewPasswordSerializer,
     LogoutSerializer,
     SubjectSerializer,
-    CertificationSerializer
+    CertificationSerializer,
+    UpdateProfileSerializer
 )
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
@@ -169,6 +170,17 @@ class LogoutUserView(GenericAPIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
+    
+
+
+
+# Profile VIew
+class UserDetailsView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = User.objects.all()
+    lookup_field = 'id'
+    serializer_class = UpdateProfileSerializer
+    permission_classes = [IsAuthenticated]
+   
 
 
 # Tutor Profile

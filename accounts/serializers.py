@@ -71,7 +71,7 @@ class LoginSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['email', 'password', 'full_name',
+        fields = ['id', 'email', 'password', 'full_name',
             'role', 'access_token', 'refresh_token']
 
     def validate(self, attrs):
@@ -91,6 +91,7 @@ class LoginSerializer(serializers.ModelSerializer):
             raise AuthenticationFailed("Invalid credentials, try again")
         user_tokens = user.tokens()
         return{
+            'id':user.pk,
             "email":user.email,
             "full_name":user.get_full_name,
             "role": user.role,
@@ -190,4 +191,6 @@ class CertificationSerializer(serializers.ModelSerializer):
 
 
 class UpdateProfileSerializer(serializers.ModelSerializer):
-    pass
+    class Meta:
+        model = User
+        fields = '__all__'
