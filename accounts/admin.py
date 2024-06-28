@@ -1,5 +1,5 @@
 from django.contrib import admin
-from . models import User, Student, Tutor
+from . models import User, Student, Tutor, Subject, Certification
 
 
 
@@ -7,3 +7,6 @@ from . models import User, Student, Tutor
 admin.site.register(User)
 admin.site.register(Tutor)
 admin.site.register(Student)
+
+admin.site.register(Subject)
+admin.site.register(Certification)

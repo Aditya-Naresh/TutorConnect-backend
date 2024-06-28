@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from . models import User, Student, Tutor
+from . models import User, Student, Tutor, Subject, Certification
 from django.contrib.auth import authenticate, get_user_model
 from rest_framework.exceptions import AuthenticationFailed
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
@@ -11,6 +11,7 @@ from django.db import IntegrityError
 from rest_framework.exceptions import ValidationError
 from .utils import send_normal_email
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
+from rest_framework.fields import CurrentUserDefault
 
 
 # User SignUp
@@ -167,3 +168,26 @@ class LogoutSerializer(serializers.Serializer):
 
 
 
+class SubjectSerializer(serializers.ModelSerializer):
+    owner = serializers.PrimaryKeyRelatedField(default = CurrentUserDefault(), read_only = True)
+    slug = serializers.CharField(max_length = 200, read_only = True)
+
+    class Meta:
+        model = Subject
+        fields = '__all__'
+
+
+
+
+class CertificationSerializer(serializers.ModelSerializer):
+    owner = serializers.PrimaryKeyRelatedField(default = CurrentUserDefault(), read_only = True)
+    slug = serializers.CharField(max_length = 200, read_only = True)
+
+    class Meta:
+        model = Certification
+        fields = '__all__'
+
+
+
+class UpdateProfileSerializer(serializers.ModelSerializer):
+    pass
