@@ -1,5 +1,14 @@
 from rest_framework.generics import GenericAPIView
-from . serializers import UserRegisterSerializer, EmailConfirmationSerializer, LoginSerializer, PasswordResetSerializer,SetNewPasswordSerializer,LogoutSerializer
+from . serializers import (
+    UserRegisterSerializer,
+    EmailConfirmationSerializer,
+    LoginSerializer,
+    PasswordResetSerializer,
+    SetNewPasswordSerializer,
+    LogoutSerializer,
+    SubjectSerializer,
+    CertificationSerializer
+)
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
@@ -15,7 +24,9 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
 from rest_framework.permissions import IsAuthenticated
-from . models import User
+from . models import User, Subject, Certification
+from rest_framework import generics
+from .permissions import IsOwnerTutorOnly
 # Create your views here.
 
 
@@ -63,15 +74,15 @@ class EmailConfirmationView(GenericAPIView):
     serializer_class = EmailConfirmationSerializer
 
     def post(self, request):
-        serializer = self.serializer_class(data = request.data)
+        serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
-        
+
         uid = serializer.validated_data['uid']
         token = serializer.validated_data['token']
 
         try:
             user_id = force_str(urlsafe_base64_decode(uid))
-            user = User.objects.get(pk = user_id)
+            user = User.objects.get(pk=user_id)
             user.is_active = True
             user.is_verified = True
             user.save()
@@ -80,9 +91,9 @@ class EmailConfirmationView(GenericAPIView):
             }, status=status.HTTP_200_OK)
         except User.DoesNotExist:
             return Response({
-                "error" : "Invalid link"
+                "error": "Invalid link"
             }, status=status.HTTP_400_BAD_REQUEST)
-        
+
 
 # Login
 class LoginUserView(GenericAPIView):
@@ -90,10 +101,11 @@ class LoginUserView(GenericAPIView):
     queryset = User.objects.all()
 
     def post(self, request):
-        serializer = self.serializer_class(data=request.data, context={'request':request})
+        serializer = self.serializer_class(
+            data=request.data, context={'request': request})
         if serializer.is_valid(raise_exception=True):
             return Response(serializer.data, status=status.HTTP_200_OK)
-        
+
 
 # Forgot Password
 class PasswordResetRequestView(GenericAPIView):
@@ -124,7 +136,7 @@ class SetNewPasswordView(GenericAPIView):
             uidb64 = serializer.validated_data['uidb64']
             token = serializer.validated_data['token']
 
-            if password!= confirm_password:
+            if password != confirm_password:
                 raise serializers.ValidationError("Passwords do not match")
 
             User = get_user_model()
@@ -136,7 +148,8 @@ class SetNewPasswordView(GenericAPIView):
                 raise AuthenticationFailed("Invalid reset link")
 
             if not default_token_generator.check_token(user, token):
-                raise AuthenticationFailed("Reset link is invalid or has expired")
+                raise AuthenticationFailed(
+                    "Reset link is invalid or has expired")
 
             user.set_password(password)
             user.save()
@@ -144,7 +157,6 @@ class SetNewPasswordView(GenericAPIView):
             return Response({'success': True, 'message': "Password reset successful"}, status=status.HTTP_200_OK)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 
 #  Logout
@@ -157,3 +169,37 @@ class LogoutUserView(GenericAPIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# Tutor Profile
+class SubjectView(generics.ListCreateAPIView, generics.RetrieveDestroyAPIView):
+    permission_classes = [IsOwnerTutorOnly]
+    serializer_class = SubjectSerializer
+    lookup_field = 'id'
+
+    def get_queryset(self):
+        return Subject.objects.filter(owner = self.request.user)
+    
+    def perform_create(self, serializer):
+        try:
+            serializer.save(owner=self.request.user)
+        except IntegrityError:
+            raise serializers.ValidationError(
+                {"detail": "This subject already exists for this tutor."})
+
+
+class CertificationView(generics.ListCreateAPIView, generics.RetrieveDestroyAPIView):
+    permission_classes = [IsOwnerTutorOnly]
+    serializer_class = CertificationSerializer
+    lookup_field = 'id'
+
+    def perform_create(self, serializer):
+        try:
+            serializer.save(owner=self.request.user)
+        except IntegrityError:
+            raise serializers.ValidationError(
+                {"detail": "This subject already exists for this tutor."})
+        
+    def get_queryset(self):
+        return Certification.objects.filter(owner = self.request.user)
+    

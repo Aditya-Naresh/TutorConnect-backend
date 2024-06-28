@@ -3,6 +3,12 @@ from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.utils.translation import gettext_lazy as _
 from .managers import UserManager, ProxyManager
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.core.validators import FileExtensionValidator
+from django.utils.text import slugify
+
+
+
+
 # Create your models here.
 AUTH_PROVIDERS = {
     'email': 'email',
@@ -67,3 +73,43 @@ class Tutor(User):
     objects = ProxyManager()
     class Meta:
         proxy = True
+
+
+
+# Subjects and Certifications of Tutors
+
+class Subject(models.Model):
+    name = models.CharField(max_length=100)
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'role' : User.Role.TUTOR})
+    slug = models.SlugField(max_length=150, unique=True, blank=True, null=True)
+
+    class Meta:
+        unique_together = ('owner', 'slug')
+
+    def save(self, *args, **kwargs):
+        if self.owner.role != User.Role.TUTOR:
+            raise ValueError("Only tutors can be assigned subjects")
+        if not self.slug:
+            self.slug = slugify(f"{self.owner.id}-{self.name}")
+        
+        super().save(*args, **kwargs)
+    
+    def __str__(self) -> str:
+        return self.name
+
+
+class Certification(models.Model):
+    title = models.CharField(max_length=100)
+    image = models.ImageField(upload_to='certifications/', validators=[FileExtensionValidator(['jpg', 'jpeg'])])
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'role': User.Role.TUTOR})
+    slug = models.SlugField(max_length=150, unique=True, blank=True, null=True)
+
+    def save(self, *args, **kwargs):
+        if self.owner.role != User.Role.TUTOR:
+            raise ValueError("Only tutors are required to submit Certifications")
+        if not self.slug:
+            self.slug = slugify(f"{self.owner.id}-{self.title}")
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return self.title
