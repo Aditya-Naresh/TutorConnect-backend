@@ -28,8 +28,9 @@ class User(AbstractBaseUser, PermissionsMixin):
         max_length=255, unique=True, verbose_name=_("Email Address"))
     first_name = models.CharField(max_length=100, verbose_name=_("First Name"))
     last_name = models.CharField(max_length=100, verbose_name=_("Last Name"))
-    # Add other fields in the project
-    is_approved = models.BooleanField(default=False) #Only used in TutorProfiles 
+        #Only used in TutorProfiles 
+    is_approved = models.BooleanField(default=False) 
+    rate = models.DecimalField(default=100, max_digits=6, decimal_places=2)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
     is_verified = models.BooleanField(default=False)
