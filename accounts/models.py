@@ -29,6 +29,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     first_name = models.CharField(max_length=100, verbose_name=_("First Name"))
     last_name = models.CharField(max_length=100, verbose_name=_("Last Name"))
         #Only used in TutorProfiles 
+    is_submitted = models.BooleanField(default=False)
     is_approved = models.BooleanField(default=False) 
     rate = models.DecimalField(default=100, max_digits=6, decimal_places=2)
     is_staff = models.BooleanField(default=False)
@@ -81,7 +82,7 @@ class Tutor(User):
 
 class Subject(models.Model):
     name = models.CharField(max_length=100)
-    owner = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'role' : User.Role.TUTOR})
+    owner = models.ForeignKey(User,related_name='subjects', on_delete=models.CASCADE, limit_choices_to={'role' : User.Role.TUTOR})
     slug = models.SlugField(max_length=150, unique=True, blank=True, null=True)
 
     class Meta:
@@ -104,6 +105,7 @@ class Certification(models.Model):
     image = models.ImageField(upload_to='certifications/', validators=[FileExtensionValidator(['jpg', 'jpeg'])])
     owner = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'role': User.Role.TUTOR})
     slug = models.SlugField(max_length=150, unique=True, blank=True, null=True)
+    reupload = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
         if self.owner.role != User.Role.TUTOR:
