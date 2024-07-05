@@ -13,7 +13,7 @@ class TutorListView(generics.ListAPIView):
         path = self.request.path_info
 
         if '/approval/' in path:
-            return Tutor.objects.filter(is_approved = False)
+            return Tutor.objects.filter(is_approved = False, is_submitted = True)
         else:
             return Tutor.objects.all()    
 
