@@ -4,10 +4,13 @@ from rest_framework import status, generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
-from .models import TutorDates, TimeSlots
-from accounts.models import User
-from .serializers import TutdorDateSerializer, TimeSlotSerializer
+from .models import TutorDates, TimeSlots, TuitionRequest
+from accounts.models import User, Tutor
+from .serializers import TutdorDateSerializer, TimeSlotSerializer, TutorSerializer, TuitionRequestSerializer,CreateTimeSlotSerializer
 from django.shortcuts import get_object_or_404
+from django.db.models import Q
+from rest_framework.exceptions import ValidationError
+
 
 class CreateTutorDatesView(APIView):
     permission_classes = [IsAuthenticated]
@@ -51,7 +54,7 @@ class TutorDatesListView(generics.ListAPIView):
 
 
 class TimeSlotsListView(generics.ListCreateAPIView):
-    serializer_class = TimeSlotSerializer
+    serializer_class = CreateTimeSlotSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
@@ -66,3 +69,65 @@ class TimeSlotsListView(generics.ListCreateAPIView):
         serializer.is_valid(raise_exception=True)
         serializer.save(date=date)  
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+
+
+class TimeSlotRetrieveUpdateView(generics.RetrieveUpdateAPIView):
+    serializer_class = TimeSlotSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = 'id'
+    queryset = TimeSlots.objects.all()
+
+
+    def patch(self, request, *args, **kwargs):
+        try:
+            return super().patch(request, *args, **kwargs)
+        except ValidationError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class TutorListView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = TutorSerializer
+
+
+    def get_queryset(self):
+        queryset = Tutor.objects.filter(is_approved = True)
+        keyword = self.request.query_params.get('keyword')
+        if keyword:
+            queryset = queryset.filter(
+                Q(first_name__icontains = keyword) |
+                Q(last_name__icontains = keyword) |
+                Q(subjects__name__icontains=keyword)
+            ).distinct()
+        return queryset
+    
+
+
+class TuitionRequestListCreateView(generics.ListCreateAPIView):
+    serializer_class = TuitionRequestSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'TUTOR':
+            return TuitionRequest.objects.filter(tutor_viewed=False, tutor=user)
+        elif user.role == 'STUDENT':
+            return TuitionRequest.objects.filter(tutor_viewed=True, student_viewed=False, student=user)
+        else:
+            return TuitionRequest.objects.none()  # Handle other roles or unauthenticated users
+
+class TuitionRequestRetrieveUpdateView(generics.RetrieveUpdateAPIView):
+    serializer_class = TuitionRequestSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = 'id'
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'TUTOR':
+            return TuitionRequest.objects.filter(tutor=user)
+        elif user.role == 'STUDENT':
+            return TuitionRequest.objects.filter(student=user)
+        else:
+            return TuitionRequest.objects.none()  
+
