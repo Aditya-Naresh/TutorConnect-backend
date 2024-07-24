@@ -7,8 +7,6 @@ from django.core.validators import FileExtensionValidator
 from django.utils.text import slugify
 
 
-
-
 # Create your models here.
 AUTH_PROVIDERS = {
     'email': 'email',
@@ -21,6 +19,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         ADMIN = "ADMIN", "Admin"
         STUDENT = "STUDENT", "Student"
         TUTOR = "TUTOR", "Tutor"
+
     base_role = Role.ADMIN
     role = models.CharField(
         max_length=50, choices=Role.choices, default=base_role)
@@ -28,9 +27,9 @@ class User(AbstractBaseUser, PermissionsMixin):
         max_length=255, unique=True, verbose_name=_("Email Address"))
     first_name = models.CharField(max_length=100, verbose_name=_("First Name"))
     last_name = models.CharField(max_length=100, verbose_name=_("Last Name"))
-        #Only used in TutorProfiles 
+    # Only used in TutorProfiles
     is_submitted = models.BooleanField(default=False)
-    is_approved = models.BooleanField(default=False) 
+    is_approved = models.BooleanField(default=False)
     rate = models.DecimalField(default=100, max_digits=6, decimal_places=2)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
@@ -51,7 +50,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self) -> str:
         return self.email
 
-    @property
     def get_full_name(self):
         return f"{self.first_name} {self.last_name}"
 
@@ -66,6 +64,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 class Student(User):
     base_role = User.Role.STUDENT
     objects = ProxyManager()
+
     class Meta:
         proxy = True
 
@@ -73,16 +72,17 @@ class Student(User):
 class Tutor(User):
     base_role = User.Role.TUTOR
     objects = ProxyManager()
+
     class Meta:
         proxy = True
-
 
 
 # Subjects and Certifications of Tutors
 
 class Subject(models.Model):
     name = models.CharField(max_length=100)
-    owner = models.ForeignKey(User,related_name='subjects', on_delete=models.CASCADE, limit_choices_to={'role' : User.Role.TUTOR})
+    owner = models.ForeignKey(User, related_name='subjects',
+                              on_delete=models.CASCADE, limit_choices_to={'role': User.Role.TUTOR})
     slug = models.SlugField(max_length=150, unique=True, blank=True, null=True)
 
     class Meta:
@@ -93,23 +93,26 @@ class Subject(models.Model):
             raise ValueError("Only tutors can be assigned subjects")
         if not self.slug:
             self.slug = slugify(f"{self.owner.id}-{self.name}")
-        
+
         super().save(*args, **kwargs)
-    
+
     def __str__(self) -> str:
         return self.name
 
 
 class Certification(models.Model):
     title = models.CharField(max_length=100)
-    image = models.ImageField(upload_to='certifications/', validators=[FileExtensionValidator(['jpg', 'jpeg'])])
-    owner = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={'role': User.Role.TUTOR})
+    image = models.ImageField(upload_to='certifications/',
+                              validators=[FileExtensionValidator(['jpg', 'jpeg'])])
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={
+                              'role': User.Role.TUTOR})
     slug = models.SlugField(max_length=150, unique=True, blank=True, null=True)
     reupload = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
         if self.owner.role != User.Role.TUTOR:
-            raise ValueError("Only tutors are required to submit Certifications")
+            raise ValueError(
+                "Only tutors are required to submit Certifications")
         if not self.slug:
             self.slug = slugify(f"{self.owner.id}-{self.title}")
         super().save(*args, **kwargs)
