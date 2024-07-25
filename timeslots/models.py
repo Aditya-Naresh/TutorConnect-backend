@@ -51,3 +51,22 @@ class TimeSlots(models.Model):
 
     def __str__(self) -> str:
         return f"{self.tutor.first_name} : {self.start_time}"
+
+
+
+
+
+
+class TuitionRequest(models.Model):
+    student = models.ForeignKey(User, related_name="tuition_requests_as_student", blank=True, null=True, on_delete=models.CASCADE)
+    tutor = models.ForeignKey(User, related_name="tuition_requests_as_tutor", on_delete=models.CASCADE)
+    subject = models.ForeignKey(Subject, related_name="tuition_request_subject", on_delete=models.CASCADE)
+    is_accepted = models.BooleanField(default=False)
+    tutor_viewed = models.BooleanField(default=False)
+    student_viewed = models.BooleanField(default=False)
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+    def __str__(self):
+        return f"TuitionRequest from {self.student.first_name} to {self.tutor.first_name}"

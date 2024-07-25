@@ -30,3 +30,39 @@ class TimeSlotSerializer(serializers.ModelSerializer):
     
     def get_subject(self, obj):
         return obj.subject.name if obj.subject else ""
+
+
+
+
+class SubjectSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Subject
+        fields = ['id','name']
+
+class TutorSerializer(serializers.ModelSerializer):
+    subjects = SubjectSerializer(many=True, read_only=True)
+    class Meta:
+        model = User
+        fields = ['id', 'first_name', 'last_name', 'email', 'subjects', 'rate']
+
+
+
+
+class TuitionRequestSerializer(serializers.ModelSerializer):
+    tutor_name = serializers.SerializerMethodField()
+    student_name = serializers.SerializerMethodField()
+    subject_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TuitionRequest
+        fields = '__all__'
+        read_only_fields = ['id', 'created_at']
+
+    def get_tutor_name(self, obj):
+        return f"{obj.tutor.first_name} {obj.tutor.last_name}"
+
+    def get_student_name(self, obj):
+        return f"{obj.student.first_name} {obj.student.last_name}"
+    
+    def get_subject_name(self, obj):
+        return obj.subject.name if obj.subject else None
