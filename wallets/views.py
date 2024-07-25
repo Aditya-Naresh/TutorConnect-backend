@@ -1,8 +1,7 @@
-from django.shortcuts import render
-from .serializers import WalletSerializer
+from .serializers import *
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
-from . models import Wallet
+from . models import *
 # Create your views here.
 
 class WalletView(generics.RetrieveUpdateDestroyAPIView):
@@ -12,3 +11,14 @@ class WalletView(generics.RetrieveUpdateDestroyAPIView):
     def get_object(self):
         wallet, created = Wallet.objects.get_or_create(owner=self.request.user)
         return wallet
+    
+
+
+class TransactionListView(generics.ListCreateAPIView):
+    queryset = WalletTransaction.objects.all()
+    serializer_class = WalletTransactionSerializer
+
+class TransactionDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = WalletTransaction.objects.all()
+    serializer_class = WalletTransactionSerializer
+    

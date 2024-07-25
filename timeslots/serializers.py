@@ -9,10 +9,11 @@ class TimeSlotSerializer(serializers.ModelSerializer):
     student_name = serializers.SerializerMethodField()
     tutor_name = serializers.SerializerMethodField()
     subject = serializers.SerializerMethodField()
+    rate = serializers.SerializerMethodField()
 
     class Meta:
         model = TimeSlots
-        fields = ['id', 'start', 'end', 'subject', 'tutor', 'student','title', 'className', "student_name", "tutor_name"]
+        fields = ['id', 'start', 'end', 'subject', 'tutor', 'student','title', 'className', "student_name", "tutor_name", "rate"]
 
     def get_student_name(self, obj):
         if obj.student:
@@ -30,6 +31,9 @@ class TimeSlotSerializer(serializers.ModelSerializer):
     
     def get_subject(self, obj):
         return obj.subject.name if obj.subject else ""
+    
+    def get_rate(self, obj):
+        return obj.tutor.rate
 
 
 
