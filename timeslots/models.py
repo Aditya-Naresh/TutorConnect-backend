@@ -1,10 +1,7 @@
 from django.db import models
-from accounts.models import *
+from accounts.models import User, Subject
 from datetime import timedelta
 from django.core.exceptions import ValidationError
-
-# Create your models here.
-
 
 class TimeSlots(models.Model):
     class Meta:
@@ -35,27 +32,32 @@ class TimeSlots(models.Model):
             raise ValidationError("Only the Tutor's Subjects are allowed")
 
         if self.tutor.role != User.Role.TUTOR:
-            raise ValidationError(
-                "Only the Tutors are allowed to be in Tutor Field")
+            raise ValidationError("Only the Tutors are allowed to be in Tutor Field")
 
         if self.student and self.student.role != User.Role.STUDENT:
-            raise ValidationError(
-                "Only Students are allowed to book the time slots")
+            raise ValidationError("Only Students are allowed to book the time slots")
+
+        if self.start_time and self.end_time:
+            overlapping_slots = TimeSlots.objects.filter(
+                tutor=self.tutor,
+                start_time__lt=self.end_time,
+                end_time__gt=self.start_time
+            ).exclude(id=self.id)  
+
+            if overlapping_slots.exists():
+                raise ValidationError("This time slot overlaps with an existing slot.")
 
     def save(self, *args, **kwargs):
         self.clean()
 
-        if self.start_time:
+        # Automatically set end_time if not provided
+        if self.start_time and not self.end_time:
             self.end_time = self.start_time + timedelta(hours=1)
+
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:
         return f"{self.tutor.first_name} : {self.start_time}"
-
-
-
-
-
 
 class TuitionRequest(models.Model):
     student = models.ForeignKey(User, related_name="tuition_requests_as_student", blank=True, null=True, on_delete=models.CASCADE)
@@ -66,7 +68,6 @@ class TuitionRequest(models.Model):
     student_viewed = models.BooleanField(default=False)
     message = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
-
 
     def __str__(self):
         return f"TuitionRequest from {self.student.first_name} to {self.tutor.first_name}"

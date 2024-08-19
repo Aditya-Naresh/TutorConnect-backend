@@ -1,10 +1,11 @@
 from rest_framework import serializers
+from django.utils.timezone import now
 from .models import *
 
 class TimeSlotSerializer(serializers.ModelSerializer):
     title = serializers.CharField(source='status')
     start = serializers.DateTimeField(source='start_time')
-    end = serializers.DateTimeField(source='end_time', allow_null = True)
+    end = serializers.DateTimeField(source='end_time', read_only=True)
     className = serializers.CharField(source='status')
     student_name = serializers.SerializerMethodField()
     tutor_name = serializers.SerializerMethodField()
@@ -15,26 +16,37 @@ class TimeSlotSerializer(serializers.ModelSerializer):
         model = TimeSlots
         fields = ['id', 'start', 'end', 'subject', 'tutor', 'student','title', 'className', "student_name", "tutor_name", "rate"]
 
+    def validate(self, data):
+        start_time = data.get('start_time')
+        tutor = data.get('tutor')
+        slot_id = self.instance.id if self.instance else None
+
+        # Calculate the potential end_time (assuming 1-hour duration)
+        end_time = start_time + timedelta(hours=1)
+
+        # Check for overlapping time slots
+        overlapping_slots = TimeSlots.objects.filter(
+            tutor=tutor,
+            start_time__lt=end_time,
+            end_time__gt=start_time
+        ).exclude(id=slot_id)
+
+        if overlapping_slots.exists():
+            raise serializers.ValidationError("This time slot overlaps with an existing slot.")
+
+        return data
+
     def get_student_name(self, obj):
-        if obj.student:
-            name =  obj.student.get_full_name()
-        else:
-            name = ""
-        return name
+        return obj.student.get_full_name() if obj.student else ""
     
     def get_tutor_name(self, obj):
-        if obj.tutor:
-            name =  obj.tutor.get_full_name()
-        else:
-            name = ""
-        return name
+        return obj.tutor.get_full_name() if obj.tutor else ""
     
     def get_subject(self, obj):
         return obj.subject.name if obj.subject else ""
     
     def get_rate(self, obj):
         return obj.tutor.rate
-
 
 
 
@@ -70,3 +82,22 @@ class TuitionRequestSerializer(serializers.ModelSerializer):
     
     def get_subject_name(self, obj):
         return obj.subject.name if obj.subject else None
+    
+
+
+
+class CreateTimeSlotsSerializer(serializers.Serializer):
+    start_time = serializers.DateTimeField()
+    end_time = serializers.DateTimeField()
+
+    def validate(self, attrs):
+        start_time = attrs['start_time']
+        end_time = attrs['end_time']
+
+        if start_time >= end_time:
+            raise serializers.ValidationError("End time must be after start time.")
+        
+        if start_time < now():
+            raise serializers.ValidationError("Start time cannot create time slot in the past")
+        return attrs
+    

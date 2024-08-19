@@ -9,4 +9,5 @@ urlpatterns = [
     path('tuition-request/', TuitionRequestListCreateView.as_view(), name='tuition-request'),
     path('tuition-request/<id>', TuitionRequestRetrieveUpdateView.as_view(), name='tuition-request-id'),
     path('tutor_timeslots/<int:tutor_id>/', TutorTimeSlotsListView.as_view(), name='tutor_timeslots'),
+    path('create-timeslots/', CreateTimeSlotsView.as_view(), name='create-timeslots')
 ]
