@@ -1,10 +1,13 @@
-from rest_framework import generics
+from rest_framework import generics, status
 from .serializers import *
 from rest_framework.response import Response
 from .models import *
 from .permissions import *
+from accounts.models import *
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
+from django.utils import timezone
+from datetime import timedelta
 
 class TutorTimeSlotView(generics.ListCreateAPIView):
     permission_classes = [TutorPermission]
@@ -84,5 +87,44 @@ class TutorTimeSlotsListView(generics.ListAPIView):
 
     def get_queryset(self):
         tutor_id = self.kwargs['tutor_id']
-        return TimeSlots.objects.filter(tutor__id = tutor_id)
+        return TimeSlots.objects.filter(tutor__id = tutor_id, status=TimeSlots.Status.AVAILABLE)
     
+
+
+
+class CreateTimeSlotsView(generics.GenericAPIView):
+    # permission_classes = [TutorPermission]
+    serializer_class = CreateTimeSlotsSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data = request.data)
+        serializer.is_valid(raise_exception = True)
+
+        start_time = serializer.validated_data['start_time']
+        end_time = serializer.validated_data['end_time']
+        tutor = request.user
+
+        created_slots = []
+        current_time = start_time
+
+        while current_time < end_time:
+            slot_end_time = current_time + timedelta(hours=1)
+            
+            if not TimeSlots.objects.filter(
+                tutor = tutor,
+                start_time__lt = slot_end_time,
+                end_time__gt = current_time
+            ).exists():
+                slot = TimeSlots.objects.create(
+                    tutor = tutor,
+                    start_time = current_time,
+                    end_time = slot_end_time,
+                    status = TimeSlots.Status.AVAILABLE
+                )
+                created_slots.append(slot)
+            
+            current_time = slot_end_time
+        
+        if not created_slots:
+            return Response({"message": "No time slots were created as all potential slots overlap with existing ones."}, status=status.HTTP_200_OK)
+        return Response({"message": f"{len(created_slots)} time slots created successfully"}, status=status.HTTP_201_CREATED)
