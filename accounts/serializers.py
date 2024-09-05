@@ -12,45 +12,48 @@ from rest_framework.exceptions import ValidationError
 from .utils import send_normal_email
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from rest_framework.fields import CurrentUserDefault
-
-
+from drf_extra_fields.fields import Base64ImageField
+from django.core.files.uploadedfile import SimpleUploadedFile
+import base64
+from io import BytesIO
 # User SignUp
 
-class UserRegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(
-        max_length=68, min_length=6, write_only=True)
-    confirm_password = serializers.CharField(
-        max_length=68, min_length=6, write_only=True)
-    is_tutor = serializers.BooleanField(write_only=True)
+# class UserRegisterSerializer(serializers.ModelSerializer):
+#     password = serializers.CharField(
+#         max_length=68, min_length=6, write_only=True)
+#     confirm_password = serializers.CharField(
+#         max_length=68, min_length=6, write_only=True)
+#     is_tutor = serializers.BooleanField(write_only=True)
 
-    class Meta:
-        model = User
-        fields = ['email', 'first_name', "last_name",
-            "password", "confirm_password", "is_tutor"]
+#     class Meta:
+#         model = User
+#         fields = ['email', 'first_name', "last_name",
+#             "password", "confirm_password", "is_tutor"]
 
-    def validate(self, attrs):
-        password = attrs.get('password', "")
-        confirm_password = attrs.get('confirm_password', "")
-        if password != confirm_password:
-            raise serializers.ValidationError("Passwords do not match")
-        return attrs
+#     def validate(self, attrs):
+#         password = attrs.get('password', "")
+#         confirm_password = attrs.get('confirm_password', "")
+#         if password != confirm_password:
+#             raise serializers.ValidationError("Passwords do not match")
+#         return attrs
 
-    def create(self, validated_data):
-        is_tutor = validated_data.pop("is_tutor", False)
-        user_model = Tutor if is_tutor else Student
+#     def create(self, validated_data):
+#         is_tutor = validated_data.pop("is_tutor", False)
+#         user_model = Tutor if is_tutor else Student
 
-        try:
-            user = user_model.objects.create_user(
-                email=validated_data['email'],
-                first_name=validated_data['first_name'],
-                last_name=validated_data['last_name'],
-                password=validated_data['password']
-            )
-        except IntegrityError:
-            raise ValidationError(
-                {"message": "A user with this email already exists."})
+#         try:
+#             user = user_model.objects.create_user(
+#                 email=validated_data['email'],
+#                 first_name=validated_data['first_name'],
+#                 last_name=validated_data['last_name'],
+#                 password=validated_data['password']
+#             )
+#         except IntegrityError:
+#             raise ValidationError(
+#                 {"message": "A user with this email already exists."})
 
-        return user
+#         return user
+
 
 
 # Mail Confirmation Serializer
@@ -86,6 +89,9 @@ class LoginSerializer(serializers.ModelSerializer):
 
         if user.is_blocked:
             raise AuthenticationFailed("Your account is blocked, please contact support")
+        
+        if not user.is_verified:
+            raise AuthenticationFailed("Your account is not verified")
     
         if not user.check_password(password):
             raise AuthenticationFailed("Invalid credentials, try again")

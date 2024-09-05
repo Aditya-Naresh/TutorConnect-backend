@@ -1,22 +1,13 @@
 from rest_framework.generics import GenericAPIView
-from . serializers import (
-    UserRegisterSerializer,
-    EmailConfirmationSerializer,
-    LoginSerializer,
-    PasswordResetSerializer,
-    SetNewPasswordSerializer,
-    LogoutSerializer,
-    SubjectSerializer,
-    CertificationSerializer,
-    UpdateProfileSerializer
-)
+from rest_framework.views import APIView
+from . serializers import *
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from rest_framework.response import Response
 from rest_framework import status
 from .utils import send_normal_email
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from rest_framework.exceptions import ValidationError
 from rest_framework.views import exception_handler
 from rest_framework.exceptions import AuthenticationFailed
@@ -25,48 +16,119 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
 from rest_framework.permissions import IsAuthenticated
-from . models import User, Subject, Certification
-from rest_framework import generics
+from . models import *
+from rest_framework import generics , status
 from .permissions import IsOwnerTutorOnly
+from django.core.files.base import ContentFile
+import base64
 # Create your views here.
 
 
-class RegisterUserView(GenericAPIView):
-    serializer_class = UserRegisterSerializer
+# class RegisterUserView(GenericAPIView):
+#     serializer_class = UserRegisterSerializer
 
+#     def post(self, request):
+#         user_data = request.data
+#         serializer = self.serializer_class(data=user_data)
+
+#         try:
+#             if serializer.is_valid(raise_exception=True):
+#                 user = serializer.save()
+
+#                 # Token for mail verification
+#                 token_generator = PasswordResetTokenGenerator()
+#                 uid = urlsafe_base64_encode(force_bytes(user.pk))
+#                 token = token_generator.make_token(user)
+#                 site_domain = "http://localhost:5173"
+#                 verification_link = f"{site_domain}/verify-email/{uid}/{token}/"
+#                 email_body = f"Hi {user.get_full_name}, Use the link below to verify your email \n {verification_link}"
+#                 mail_data = {
+#                     'email_body': email_body,
+#                     'email_subject': 'Email Verification',
+#                     'to_email': user.email
+#                 }
+#                 send_normal_email(mail_data)
+
+#                 return Response({
+#                     'data': serializer.data,
+#                     'message': f"Hi {user.first_name}, Thanks for signing up! A verification link has been sent to your mail"
+#                 }, status=status.HTTP_201_CREATED)
+#         except ValidationError as e:
+#             if 'email' in e.detail:
+#                 return Response({
+#                     'message': "A user with this email already exists please try to login"
+#                 }, status=status.HTTP_400_BAD_REQUEST)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class RegisterUserView(APIView):
     def post(self, request):
-        user_data = request.data
-        serializer = self.serializer_class(data=user_data)
-
+        is_tutor = request.data['is_tutor']
+        email = request.data['email']
+        first_name = request.data['first_name']
+        last_name = request.data['last_name']
+        password = request.data['password']
+        confirm_password = request.data['password']
         try:
-            if serializer.is_valid(raise_exception=True):
-                user = serializer.save()
+            user_model = Tutor if is_tutor else Student
+            role = User.Role.TUTOR if is_tutor else User.Role.STUDENT
+            user = user_model.objects.create(
+                email = email,
+                first_name = first_name,
+                last_name = last_name,
+                role = role
 
-                # Token for mail verification
-                token_generator = PasswordResetTokenGenerator()
-                uid = urlsafe_base64_encode(force_bytes(user.pk))
-                token = token_generator.make_token(user)
-                site_domain = "http://localhost:5173"
-                verification_link = f"{site_domain}/verify-email/{uid}/{token}/"
-                email_body = f"Hi {user.get_full_name}, Use the link below to verify your email \n {verification_link}"
-                mail_data = {
+            )
+
+            user.set_password(password)
+            user.is_active = False
+            user.save()
+            print ("User:", user.pk, user.role)
+
+            if is_tutor:
+            
+                # Creating Certifications
+                certifications_data = request.data['certifications']
+                for cert in certifications_data:
+                    certificate = Certification.objects.create(
+                        title = cert['title'],
+                        image = cert['image'],
+                        owner = user
+                    )
+
+                    print("certificate:", certificate.title)
+                # Adding subjects
+                subjects_data = request.data['subjects']
+                for sub in subjects_data:
+                    subject = Subject.objects.create(
+                        name = sub,
+                        owner = user
+                    )
+                    print("subject: ", subject)
+                rate = request.data['rate']
+                user.rate = float(rate)
+                user.is_submitted = True
+                
+                user.save()
+                print("rate : ",user.rate)
+            self._send_mail(user)
+            return Response({"message": "User created successfully."}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({"error" : "Failed to create user. Please try again."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def _send_mail(self, user):
+        token_generator = PasswordResetTokenGenerator()
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = token_generator.make_token(user)
+        site_domain = "http://localhost:5173"
+        verification_link = f"{site_domain}/verify-email/{uid}/{token}/"
+        email_body = f"Hi {user.get_full_name}, Use the link below to verify your email \n {verification_link}"
+        mail_data = {
                     'email_body': email_body,
                     'email_subject': 'Email Verification',
                     'to_email': user.email
                 }
-                send_normal_email(mail_data)
-
-                return Response({
-                    'data': serializer.data,
-                    'message': f"Hi {user.first_name}, Thanks for signing up! A verification link has been sent to your mail"
-                }, status=status.HTTP_201_CREATED)
-        except ValidationError as e:
-            if 'email' in e.detail:
-                return Response({
-                    'message': "A user with this email already exists please try to login"
-                }, status=status.HTTP_400_BAD_REQUEST)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+        return send_normal_email(mail_data)
 
 #  Mail Confirmation
 
@@ -92,7 +154,7 @@ class EmailConfirmationView(GenericAPIView):
             }, status=status.HTTP_200_OK)
         except User.DoesNotExist:
             return Response({
-                "error": "Invalid link"
+                "error": "Invalid link or user does not exist."
             }, status=status.HTTP_400_BAD_REQUEST)
 
 
