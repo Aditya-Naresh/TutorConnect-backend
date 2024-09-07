@@ -19,8 +19,11 @@ from rest_framework.permissions import IsAuthenticated
 from . models import *
 from rest_framework import generics , status
 from .permissions import IsOwnerTutorOnly
-from django.core.files.base import ContentFile
+from PIL import Image
 import base64
+from io import BytesIO
+from django.core.files.uploadedfile import InMemoryUploadedFile
+
 # Create your views here.
 
 
@@ -90,9 +93,11 @@ class RegisterUserView(APIView):
                 # Creating Certifications
                 certifications_data = request.data['certifications']
                 for cert in certifications_data:
+                    image = self._convert_image(cert['image'])
+                    print("iamge", image)
                     certificate = Certification.objects.create(
                         title = cert['title'],
-                        image = cert['image'],
+                        image = image,
                         owner = user
                     )
 
@@ -129,6 +134,20 @@ class RegisterUserView(APIView):
                     'to_email': user.email
                 }
         return send_normal_email(mail_data)
+    
+
+    def _convert_image(self, data):
+        try:
+            image_data = data.split(',')[1]
+            bytes_decoded = base64.b64decode(image_data)
+            image = Image.open(BytesIO(bytes_decoded))
+            output = BytesIO()
+            image = image.convert('RGB')
+            image.save(output, format='JPEG')
+            output.seek(0)
+            return InMemoryUploadedFile(output, 'ImageField', 'temp.jpg', 'image/jpeg', output.getbuffer().nbytes, None)
+        except Exception as e:
+            raise ValueError("Invalid Image Format")
 
 #  Mail Confirmation
 
