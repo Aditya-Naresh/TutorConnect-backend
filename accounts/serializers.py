@@ -188,11 +188,21 @@ class SubjectSerializer(serializers.ModelSerializer):
 
 class CertificationSerializer(serializers.ModelSerializer):
     owner = serializers.PrimaryKeyRelatedField(default = CurrentUserDefault(), read_only = True)
-    slug = serializers.CharField(max_length = 200, read_only = True)
-
     class Meta:
         model = Certification
-        fields = '__all__'
+        fields = ['id', 'title', 'image', 'owner']  
+
+    def validate(self, data):
+        owner = self.context['request'].user
+        title = data.get('title') 
+
+        if Certification.objects.filter(owner=owner, title=title).exists():
+            raise serializers.ValidationError(
+                {"detail": "This certification already exists for this tutor."}
+            )
+        
+        return data
+
 
 
 
