@@ -9,20 +9,31 @@ class TimeSlotSerializer(serializers.ModelSerializer):
     className = serializers.CharField(source='status')
     student_name = serializers.SerializerMethodField()
     tutor_name = serializers.SerializerMethodField()
-    subject = serializers.SerializerMethodField()
+    subject_name = serializers.SerializerMethodField()
     rate = serializers.SerializerMethodField()
 
     class Meta:
         model = TimeSlots
-        fields = ['id', 'start', 'end', 'subject', 'tutor', 'student','title', 'className', "student_name", "tutor_name", "rate"]
+        fields = ['id', 'start', 'end', 'subject', 'tutor', 'student','title', 'className', "student_name", "tutor_name", "rate", "subject_name"]
 
     def validate(self, data):
-        start_time = data.get('start_time')
-        tutor = data.get('tutor')
+        start_time = self.instance.start_time if self.instance else data.get('start_time')
+        tutor = self.instance.tutor if self.instance else data.get('tutor')
         slot_id = self.instance.id if self.instance else None
 
+
+        if start_time is None:
+            raise serializers.ValidationError({
+                'start': 'Start time is required.'
+            })
+
         # Calculate the potential end_time (assuming 1-hour duration)
-        end_time = start_time + timedelta(hours=1)
+        try:
+            end_time = start_time + timedelta(hours=1)
+        except TypeError:
+            raise serializers.ValidationError({
+                'start': 'Invalid start time format.'
+            })
 
         # Check for overlapping time slots
         overlapping_slots = TimeSlots.objects.filter(
@@ -42,7 +53,7 @@ class TimeSlotSerializer(serializers.ModelSerializer):
     def get_tutor_name(self, obj):
         return obj.tutor.get_full_name() if obj.tutor else ""
     
-    def get_subject(self, obj):
+    def get_subject_name(self, obj):
         return obj.subject.name if obj.subject else ""
     
     def get_rate(self, obj):
