@@ -6,7 +6,6 @@ from .permissions import *
 from accounts.models import *
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
-from django.utils import timezone
 from datetime import timedelta
 
 class TutorTimeSlotView(generics.ListCreateAPIView):
@@ -35,10 +34,15 @@ class StudentTimeSlotView(generics.ListAPIView):
 class TutorListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = TutorSerializer
+    lookup_field = 'id'
 
 
     def get_queryset(self):
         queryset = Tutor.objects.filter(is_approved = True)
+        tutor_id = self.kwargs.get('id') or self.request.query_params.get('id')
+        if tutor_id:
+            return Tutor.objects.filter(id=tutor_id, is_approved=True)
+
         keyword = self.request.query_params.get('keyword')
         if keyword:
             queryset = queryset.filter(
@@ -93,7 +97,7 @@ class TutorTimeSlotsListView(generics.ListAPIView):
 
 
 class CreateTimeSlotsView(generics.GenericAPIView):
-    # permission_classes = [TutorPermission]
+    permission_classes = [TutorPermission]
     serializer_class = CreateTimeSlotsSerializer
 
     def post(self, request, *args, **kwargs):
