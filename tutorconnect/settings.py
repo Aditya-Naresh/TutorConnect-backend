@@ -35,7 +35,8 @@ INSTALLED_APPS = [
     'accounts',
     'useradmin',
     'timeslots',
-    'wallets'
+    'wallets',
+    'api',
 ]
 
 MIDDLEWARE = [

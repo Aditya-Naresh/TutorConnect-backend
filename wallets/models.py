@@ -26,4 +26,4 @@ class WalletTransaction(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self) -> str:
-        return 
+        return f"{self.wallet.owner.first_name} - {self.transaction_type}"
