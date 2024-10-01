@@ -12,18 +12,31 @@ class Wallet(models.Model):
 
 
 class WalletTransaction(models.Model):
-    TRANSACTION_TYPE_CHOICES = (
-        ('deposit', 'Deposit'),
-        ('withdrawal', 'Withdrawal'),
-        ('credit', 'Credit'),
-        ('debit', 'Debit')
-    )
+    class TransactionType(models.TextChoices):
+        DEPOSIT = "DEPOSIT", "DEPOSIT"
+        WITHDRAW = "WITHDRAW", "WITHDRAW"
 
-    wallet = models.OneToOneField(Wallet, related_name='transactions', on_delete=models.CASCADE)
-    transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPE_CHOICES)
-    amount = models.DecimalField(max_digits=15, decimal_places=2)
+    wallet = models.ForeignKey(Wallet, related_name='transactions', on_delete=models.CASCADE)
+    transaction_type = models.CharField(max_length=20, choices=TransactionType.choices)
+    amount = models.DecimalField(max_digits=15, decimal_places=2, unique=False)
     timeslot = models.ForeignKey(TimeSlots, on_delete=models.CASCADE, null=True, blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self) -> str:
         return f"{self.wallet.owner.first_name} - {self.transaction_type}"
+    
+
+    def save(self, *args, **kwargs):
+        wallet = self.wallet
+
+        if self.transaction_type == self.TransactionType.DEPOSIT:
+            wallet.balance += self.amount
+        elif self.transaction_type == self.TransactionType.WITHDRAW:
+            if wallet.balance >= self.amount:
+                wallet.balance -= self.amount
+            else:
+                raise ValueError('Insufficient funds for withdrawal')
+        
+        wallet.save()
+
+        super(WalletTransaction, self).save(*args, **kwargs)
