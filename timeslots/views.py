@@ -16,6 +16,12 @@ class TutorTimeSlotView(generics.ListCreateAPIView):
         return TimeSlots.objects.filter(tutor=self.request.user)
 
 
+class StudentRetrieveUpdateTimeSlotView(generics.RetrieveUpdateAPIView):
+    permission_classes = [StudentPermission]
+    serializer_class = TimeSlotSerializer
+    queryset = TimeSlots.objects.filter(tutor__is_blocked = False, status = TimeSlots.Status.AVAILABLE)
+    lookup_field = 'id'
+
 class RetrieveUpdateTimeSlotView(generics.RetrieveUpdateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = TimeSlotSerializer
@@ -38,7 +44,7 @@ class TutorListView(generics.ListAPIView):
 
 
     def get_queryset(self):
-        queryset = Tutor.objects.filter(is_approved = True)
+        queryset = Tutor.objects.filter(is_approved = True, is_blocked = False)
         tutor_id = self.kwargs.get('id') or self.request.query_params.get('id')
         if tutor_id:
             return Tutor.objects.filter(id=tutor_id, is_approved=True)

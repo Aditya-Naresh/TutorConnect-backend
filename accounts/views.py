@@ -127,7 +127,8 @@ class RegisterUserView(APIView):
         token = token_generator.make_token(user)
         site_domain = "http://localhost:5173"
         verification_link = f"{site_domain}/verify-email/{uid}/{token}/"
-        email_body = f"Hi {user.get_full_name}, Use the link below to verify your email \n {verification_link}"
+        name = f"{user.first_name} {user.last_name}"
+        email_body = f"Hi {name}, Use the link below to verify your email \n {verification_link}"
         mail_data = {
                     'email_body': email_body,
                     'email_subject': 'Email Verification',

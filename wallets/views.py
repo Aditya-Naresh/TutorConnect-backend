@@ -15,8 +15,28 @@ class WalletView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class TransactionListView(generics.ListCreateAPIView):
-    queryset = WalletTransaction.objects.all()
     serializer_class = WalletTransactionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        wallet = Wallet.objects.get(owner = self.request.user)
+
+        return WalletTransaction.objects.filter(wallet = wallet).order_by('-timestamp')
+    
+    def create(self, request, *args, **kwargs):
+        response = super().create(request, *args, **kwargs)
+
+        wallet = Wallet.objects.get(owner=request.user)
+
+        response.data['wallet'] = {
+            'id': wallet.pk,
+            'balance': wallet.balance
+        }
+
+        return response
+    
+
+
 
 class TransactionDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = WalletTransaction.objects.all()
