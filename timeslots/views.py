@@ -22,7 +22,7 @@ class StudentRetrieveUpdateTimeSlotView(generics.RetrieveUpdateAPIView):
     queryset = TimeSlots.objects.filter(tutor__is_blocked = False, status = TimeSlots.Status.AVAILABLE)
     lookup_field = 'id'
 
-class RetrieveUpdateTimeSlotView(generics.RetrieveUpdateAPIView):
+class RetrieveUpdateTimeSlotView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = TimeSlotSerializer
     queryset = TimeSlots.objects.all()
