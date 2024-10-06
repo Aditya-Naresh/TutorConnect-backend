@@ -45,13 +45,15 @@ class TimeSlots(models.Model):
             ).exclude(id=self.id)  
 
             if overlapping_slots.exists():
+                print(overlapping_slots)
                 raise ValidationError("This time slot overlaps with an existing slot.")
+            
 
     def save(self, *args, **kwargs):
         self.clean()
 
         # Automatically set end_time if not provided
-        if self.start_time and not self.end_time:
+        if self.start_time:
             self.end_time = self.start_time + timedelta(hours=1)
 
         super().save(*args, **kwargs)
