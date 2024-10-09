@@ -8,10 +8,7 @@ from django.utils.text import slugify
 
 
 # Create your models here.
-AUTH_PROVIDERS = {
-    'email': 'email',
-    'google': 'google'
-}
+
 
 
 class User(AbstractBaseUser, PermissionsMixin):
@@ -19,6 +16,11 @@ class User(AbstractBaseUser, PermissionsMixin):
         ADMIN = "ADMIN", "Admin"
         STUDENT = "STUDENT", "Student"
         TUTOR = "TUTOR", "Tutor"
+        NEW = "NEW", "New"
+
+    class AuthProviders(models.TextChoices):
+        EMAIL = "EMAIL", "Email"
+        GOOGLE = "GOOGLE", "Google"
 
     base_role = Role.ADMIN
     role = models.CharField(
@@ -39,7 +41,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     date_joined = models.DateTimeField(auto_now_add=True)
     last_login = models.DateTimeField(auto_now=True)
     auth_provider = models.CharField(
-        max_length=50, default=AUTH_PROVIDERS.get("email"))
+        max_length=50, choices=AuthProviders.choices, default=AuthProviders.EMAIL)
 
     USERNAME_FIELD = "email"
 
