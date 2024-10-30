@@ -23,46 +23,12 @@ from PIL import Image
 import base64
 from io import BytesIO
 from django.core.files.uploadedfile import InMemoryUploadedFile
+import environ
+
+env = environ.Env()
+environ.Env.read_env()
 
 # Create your views here.
-
-
-# class RegisterUserView(GenericAPIView):
-#     serializer_class = UserRegisterSerializer
-
-#     def post(self, request):
-#         user_data = request.data
-#         serializer = self.serializer_class(data=user_data)
-
-#         try:
-#             if serializer.is_valid(raise_exception=True):
-#                 user = serializer.save()
-
-#                 # Token for mail verification
-#                 token_generator = PasswordResetTokenGenerator()
-#                 uid = urlsafe_base64_encode(force_bytes(user.pk))
-#                 token = token_generator.make_token(user)
-#                 site_domain = "http://localhost:5173"
-#                 verification_link = f"{site_domain}/verify-email/{uid}/{token}/"
-#                 email_body = f"Hi {user.get_full_name}, Use the link below to verify your email \n {verification_link}"
-#                 mail_data = {
-#                     'email_body': email_body,
-#                     'email_subject': 'Email Verification',
-#                     'to_email': user.email
-#                 }
-#                 send_normal_email(mail_data)
-
-#                 return Response({
-#                     'data': serializer.data,
-#                     'message': f"Hi {user.first_name}, Thanks for signing up! A verification link has been sent to your mail"
-#                 }, status=status.HTTP_201_CREATED)
-#         except ValidationError as e:
-#             if 'email' in e.detail:
-#                 return Response({
-#                     'message': "A user with this email already exists please try to login"
-#                 }, status=status.HTTP_400_BAD_REQUEST)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 class RegisterUserView(APIView):
     def post(self, request):
@@ -94,7 +60,7 @@ class RegisterUserView(APIView):
                 certifications_data = request.data['certifications']
                 for cert in certifications_data:
                     image = self._convert_image(cert['image'])
-                    print("iamge", image)
+                    print("image", image)
                     certificate = Certification.objects.create(
                         title = cert['title'],
                         image = image,
@@ -115,7 +81,6 @@ class RegisterUserView(APIView):
                 user.is_submitted = True
                 
                 user.save()
-                print("rate : ",user.rate)
             self._send_mail(user)
             return Response({"message": "User created successfully."}, status=status.HTTP_201_CREATED)
         except Exception as e:
@@ -184,6 +149,7 @@ class LoginUserView(GenericAPIView):
     queryset = User.objects.all()
 
     def post(self, request):
+        print("REQUEST:", request)
         serializer = self.serializer_class(
             data=request.data, context={'request': request})
         if serializer.is_valid(raise_exception=True):
@@ -297,3 +263,61 @@ class CertificationView(generics.ListCreateAPIView, generics.RetrieveDestroyAPIV
     def get_queryset(self):
         return Certification.objects.filter(owner = self.request.user)
     
+# Google Authentication
+
+class GoogleAuthenticationView(APIView):
+    serializer_class = LoginSerializer
+    queryset = User.objects.all()
+    
+    def post(self, request):
+        email = request.data['email']
+        try:
+            user = User.objects.get(email = email)
+            # if user.auth_provider == User.a
+            data = self._login(user)
+            print("Data: ", data)
+            if "error" in data:
+                return Response(data, status=status.HTTP_403_FORBIDDEN)
+            return Response(data, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            user = self._signup(request)
+            data = self._login(user)
+            return Response(data, status=status.HTTP_201_CREATED)
+
+
+    def _signup(self, request):
+        email = request.data['email']
+        first_name = request.data['first_name']
+        last_name = request.data['last_name']
+
+        try:
+            user = User.objects.create(
+                email = email,
+                first_name = first_name,
+                last_name = last_name,
+                auth_provider = User.AuthProviders.GOOGLE,
+                role = User.Role.NEW
+            )
+            user.set_password(env('GOOGLE_AUTH_PASSWORD'))
+            user.save()
+            return user
+        except Exception as e:
+            return Response({"error" : "Falied to create user. Please try again"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+    def _login(self, user):
+        if user.is_blocked:
+            return {"error": "Login failed. Please contact support."}
+    
+        try:
+            user_tokens = user.tokens()
+            return {
+                "id": user.pk,
+                "email": user.email,
+                "full_name": user.get_full_name(),
+                "role": user.role,
+                "access_token": str(user_tokens.get("access")),
+                "refresh_token": str(user_tokens.get("refresh")),
+            }
+        except Exception as e:
+            return {"error": f"Token generation failed: {str(e)}"}
