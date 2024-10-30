@@ -276,6 +276,8 @@ class GoogleAuthenticationView(APIView):
             # if user.auth_provider == User.a
             data = self._login(user)
             print("Data: ", data)
+            if "error" in data:
+                return Response(data, status=status.HTTP_403_FORBIDDEN)
             return Response(data, status=status.HTTP_200_OK)
         except User.DoesNotExist:
             user = self._signup(request)
@@ -304,12 +306,18 @@ class GoogleAuthenticationView(APIView):
         
 
     def _login(self, user):
-        user_tokens = user.tokens()
-        return{
-            'id':user.pk,
-            "email":user.email,
-            "full_name":user.get_full_name(),
-            "role": user.role,
-            "access_token": str(user_tokens.get('access')),
-            "refresh_token": str(user_tokens.get('refresh'))
-        }
+        if user.is_blocked:
+            return {"error": "Login failed. Please contact support."}
+    
+        try:
+            user_tokens = user.tokens()
+            return {
+                "id": user.pk,
+                "email": user.email,
+                "full_name": user.get_full_name(),
+                "role": user.role,
+                "access_token": str(user_tokens.get("access")),
+                "refresh_token": str(user_tokens.get("refresh")),
+            }
+        except Exception as e:
+            return {"error": f"Token generation failed: {str(e)}"}

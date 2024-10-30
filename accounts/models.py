@@ -5,10 +5,9 @@ from .managers import UserManager, ProxyManager
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.core.validators import FileExtensionValidator
 from django.utils.text import slugify
-
+import os
 
 # Create your models here.
-
 
 
 class User(AbstractBaseUser, PermissionsMixin):
@@ -24,9 +23,13 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     base_role = Role.ADMIN
     role = models.CharField(
-        max_length=50, choices=Role.choices, default=base_role)
+        max_length=50,
+        choices=Role.choices,
+        default=base_role,
+    )
     email = models.EmailField(
-        max_length=255, unique=True, verbose_name=_("Email Address"))
+        max_length=255, unique=True, verbose_name=_("Email Address")
+    )
     first_name = models.CharField(max_length=100, verbose_name=_("First Name"))
     last_name = models.CharField(max_length=100, verbose_name=_("Last Name"))
     # Only used in TutorProfiles
@@ -41,7 +44,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     date_joined = models.DateTimeField(auto_now_add=True)
     last_login = models.DateTimeField(auto_now=True)
     auth_provider = models.CharField(
-        max_length=50, choices=AuthProviders.choices, default=AuthProviders.EMAIL)
+        max_length=50,
+        choices=AuthProviders.choices,
+        default=AuthProviders.EMAIL,
+    )
 
     USERNAME_FIELD = "email"
 
@@ -57,10 +63,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def tokens(self):
         refresh = RefreshToken.for_user(self)
-        return {
-            'refresh': str(refresh),
-            'access': str(refresh.access_token)
-        }
+        return {"refresh": str(refresh), "access": str(refresh.access_token)}
 
 
 class Student(User):
@@ -81,14 +84,19 @@ class Tutor(User):
 
 # Subjects and Certifications of Tutors
 
+
 class Subject(models.Model):
     name = models.CharField(max_length=100)
-    owner = models.ForeignKey(User, related_name='subjects',
-                              on_delete=models.CASCADE, limit_choices_to={'role': User.Role.TUTOR})
+    owner = models.ForeignKey(
+        User,
+        related_name="subjects",
+        on_delete=models.CASCADE,
+        limit_choices_to={"role": User.Role.TUTOR},
+    )
     slug = models.SlugField(max_length=150, unique=True, blank=True, null=True)
 
     class Meta:
-        unique_together = ('owner', 'slug')
+        unique_together = ("owner", "slug")
 
     def save(self, *args, **kwargs):
         if self.owner.role != User.Role.TUTOR:
@@ -104,20 +112,38 @@ class Subject(models.Model):
 
 class Certification(models.Model):
     title = models.CharField(max_length=100)
-    image = models.ImageField(upload_to='certifications/',
-                              validators=[FileExtensionValidator(['jpg', 'jpeg'])])
-    owner = models.ForeignKey(User, on_delete=models.CASCADE, limit_choices_to={
-                              'role': User.Role.TUTOR})
+    image = models.ImageField(
+        upload_to="certifications/",
+        validators=[FileExtensionValidator(["jpg", "jpeg"])],
+    )
+    owner = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        limit_choices_to={"role": User.Role.TUTOR},
+    )
     slug = models.SlugField(max_length=150, unique=True, blank=True, null=True)
     reupload = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
         if self.owner.role != User.Role.TUTOR:
             raise ValueError(
-                "Only tutors are required to submit Certifications")
+                "Only tutors are required to submit Certifications",
+            )
         if not self.slug:
             self.slug = slugify(f"{self.owner.id}-{self.title}")
+        if self.pk:
+            old_image = Certification.objects.get(pk=self.pk).image
+            if old_image and old_image != self.image:
+                if os.path.isfile(old_image.path):
+                    os.remove(old_image.path)
         super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        if self.image:
+            if os.path.isfile(self.image.path):
+                os.remove(self.image.path)
+
+        super().delete(*args, **kwargs)
 
     def __str__(self) -> str:
         return self.title
