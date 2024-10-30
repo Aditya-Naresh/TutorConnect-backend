@@ -1,11 +1,5 @@
 from django.urls import path
-from . views import (
-    RegisterUserView, EmailConfirmationView,
-    LoginUserView, PasswordResetRequestView,
-    SetNewPasswordView, SubjectView,
-    CertificationView, 
-    UserDetailsView
-)
+from . views import *
 urlpatterns = [
     path("signup/", RegisterUserView.as_view(), name='register_user'),
     path("verify-email/", EmailConfirmationView.as_view(),
@@ -19,5 +13,6 @@ urlpatterns = [
     path('certificates/', CertificationView.as_view(), name='certification'),
     path('certificates/<id>', CertificationView.as_view(), name='certification-id'),
     path('profile/<id>', UserDetailsView.as_view(), name='profile'),
+    path('googleAuth/', GoogleAuthenticationView.as_view(), name='google-auth')
 
 ]
