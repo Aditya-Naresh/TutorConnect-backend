@@ -56,14 +56,20 @@ class User(AbstractBaseUser, PermissionsMixin):
     objects = UserManager()
 
     def __str__(self) -> str:
-        return self.email
+        return f"{self.email}"
 
     def get_full_name(self):
         return f"{self.first_name} {self.last_name}"
 
     def tokens(self):
-        refresh = RefreshToken.for_user(self)
-        return {"refresh": str(refresh), "access": str(refresh.access_token)}
+        try:
+            refresh = RefreshToken.for_user(self)
+            return {
+                "refresh": str(refresh),
+                "access": str(refresh.access_token),
+            }
+        except Exception as e:
+            print("Tokens Error:", e)
 
 
 class Student(User):
