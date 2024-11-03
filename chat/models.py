@@ -1,12 +1,7 @@
 from django.db import models
-
-# Create your models here.
-from django.db import models
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
-
-# Create your models here.
 
 
 class Contact(models.Model):
@@ -35,8 +30,14 @@ class Message(models.Model):
 
 
 class Chat(models.Model):
-    participants = models.ManyToManyField(Contact, related_name="chats")
-    messages = models.ManyToManyField(Message, blank=True)
+    participants = models.ManyToManyField(
+        Contact,
+        related_name="chats",
+    )
+    messages = models.ManyToManyField(
+        Message,
+        blank=True,
+    )
 
     def __str__(self):
         return "{}".format(self.pk)

@@ -1,21 +1,25 @@
 from .models import Message
-
+from rest_framework_simplejwt.tokens import AccessToken
 from django.contrib.auth import get_user_model
-
 import json
-
 from asgiref.sync import async_to_sync
 from channels.generic.websocket import WebsocketConsumer
-
-from .views import last_15_messages, get_user_contact, get_current_chat
+from .utils import previous_messages, get_user_contact, get_current_chat
 
 User = get_user_model()
 
 
 class ChatConsumer(WebsocketConsumer):
 
+    def get_user_from_access_token(self):
+        token = AccessToken(self.token)
+        user_id = token.payload.get("user_id")
+        print("user_id: ", user_id)
+        user = User.objects.get(id=user_id)
+        return user
+
     def fetch_messages(self, data):
-        messages = last_15_messages(data["chatID"])
+        messages = previous_messages(data["chatID"])
         # print(data["chatID"])
         content = {
             "command": "messages",
@@ -37,14 +41,14 @@ class ChatConsumer(WebsocketConsumer):
     def message_to_json(self, message):
         return {
             "id": message.id,
-            "author": message.contact.user.username,
+            "author": message.contact.user.email,
             "content": message.content,
             "timestamp": str(message.timestamp),
         }
 
     def new_message(self, data):
         user_contact = get_user_contact(data["from"])
-        print(data['message'])
+        print(data["message"])
         print("user_contact", user_contact)
         # author_user= User.objects.get(username=author)
         message = Message.objects.create(
@@ -62,18 +66,33 @@ class ChatConsumer(WebsocketConsumer):
 
         return self.send_chat_message(content)
 
-    commands = {"fetch_messages": fetch_messages, "new_message": new_message}
+    commands = {
+        "fetch_messages": fetch_messages,
+        "new_message": new_message,
+    }
 
     def connect(self):
         self.room_name = self.scope["url_route"]["kwargs"]["room_name"]
         self.room_group_name = "chat_%s" % self.room_name
+        self.token = self.scope["query_string"].decode().split("token=")[-1]
+        self.user = self.get_user_from_access_token()
+        if self.user:
+            current_chat = get_current_chat(self.room_name)
+            participants = current_chat.participants.all()
+            contact = get_user_contact(self.user.email)
+            if contact in participants.all():
 
-        async_to_sync(self.channel_layer.group_add)(
-            self.room_group_name, self.channel_name
-        )
-        print("Connecting")
+                async_to_sync(self.channel_layer.group_add)(
+                    self.room_group_name, self.channel_name
+                )
+                print("Connecting")
 
-        self.accept()
+                self.accept()
+                self.fetch_messages({"chatID": self.room_name})
+            else:
+                self.close()
+        else:
+            self.close()
 
     def disconnect(self, close_code):
         print("DIcsonnectiong:", close_code)
