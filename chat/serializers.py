@@ -1,19 +1,17 @@
 from rest_framework import serializers
-from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
-from .models import Chat, Contact
+from .utils import get_user_contact
+from .models import Chat
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
 
 User = get_user_model()
 
 
-def get_user_contact(username):
-    user = get_object_or_404(User, username=username)
-    return get_object_or_404(Contact, user=user)
-
-
 class ContactSerializer(serializers.StringRelatedField):
+    def to_representation(self, value):
+        return f"{value.user.first_name} {value.user.last_name}"
+
     def to_internal_value(self, value):
         return value
 
@@ -29,15 +27,15 @@ class ChatSerializer(serializers.ModelSerializer):
 
         participants = validated_data.pop("participants")
         contacts = []
-        for username in participants:
-            contact = get_user_contact(username)
+        for email in participants:
+            contact = get_user_contact(email)
             contacts.append(contact)
             # chat.participants.add(contact)
 
         # participant1= participants[0]
         # participant2= participants[1]
-        # user1= get_object_or_404(User, username=participant1)
-        # user2= get_object_or_404(User, username=participant2)
+        # user1= get_object_or_404(User, email=participant1)
+        # user2= get_object_or_404(User, email=participant2)
 
         # contact1= get_object_or_404(Contact, user=user1)
         # contact2= get_object_or_404(Contact, user=user2)
@@ -57,15 +55,11 @@ class ChatSerializer(serializers.ModelSerializer):
         chat = chat.first()
 
         if chat is not None:
-            raise ValidationError(
-                {"error": "Chat already exists"},
-                code=status.HTTP_406_NOT_ACCEPTABLE,
-            )
+            return chat
 
         chat = Chat.objects.create()
-
-        for username in participants:
-            contact = get_user_contact(username)
+        for email in participants:
+            contact = get_user_contact(email)
             chat.participants.add(contact)
 
         chat.save()

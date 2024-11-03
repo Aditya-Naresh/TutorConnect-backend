@@ -38,42 +38,22 @@ def protected_endpoint(request):
     return Response({"protected": "data"})
 
 
-###
-
-
-def last_15_messages(chatID):
-    chat = get_object_or_404(Chat, id=chatID)
-    return chat.messages.order_by("-timestamp").all()
-
-
-def get_user_contact(username):
-    user = get_object_or_404(User, username=username)
-    return get_object_or_404(Contact, user=user)
-
-
-def get_current_chat(chatID):
-    return get_object_or_404(Chat, id=chatID)
-
-
-###
-
-
 class ChatListView(ListAPIView):
     # queryset= Chat.objects.all()
     serializer_class = ChatSerializer
-    permission_classes = [
-        permissions.AllowAny,
-    ]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        queryset = Chat.objects.all()
-        username = self.request.query_params.get("username", None)
+        user = self.request.user
+        contact = get_object_or_404(Contact, user=user)
+        queryset = Chat.objects.filter(participants=contact)
+        email = self.request.query_params.get("email", None)
 
-        if username is not None:
-            user = get_object_or_404(User, username=username)
+        if email is not None:
+            user = get_object_or_404(User, email=email)
             contact = get_object_or_404(Contact, user=user)
-
-            queryset = contact.chats.all()
+            print("queryset_contact", contact)
+            queryset = Chat.objects.filter(participants=contact)
 
         return queryset
 
