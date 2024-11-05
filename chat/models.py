@@ -1,43 +1,54 @@
 from django.db import models
+from django.db.models import Q
 from django.contrib.auth import get_user_model
+
+# Create your models here.
 
 User = get_user_model()
 
 
-class Contact(models.Model):
-    user = models.ForeignKey(
-        User,
-        related_name="friends",
-        on_delete=models.CASCADE,
+class ChatRooms(models.Model):
+    user1 = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="chatroom_as_user1"
     )
-    friends = models.ManyToManyField("self", blank=True)
+    user2 = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="chatroom_as_user2"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user1", "user2"],
+                name="unique_chat_room",
+                condition=Q(user1__lt=models.F("user2")),
+            )
+        ]
+
+        verbose_name_plural = "Chat Rooms"
+
+    def save(self, *args, **kwargs):
+        if self.user1.id > self.user2.id:
+            self.user1, self.user2 = self.user2, self.user1
+        super().save(*args, **kwargs)
 
     def __str__(self):
-        return self.user.email
+        return f"{self.user1.first_name} - {self.user2.first_name} chatroom"
 
 
-class Message(models.Model):
-    contact = models.ForeignKey(
-        Contact,
-        related_name="messages",
+class Messages(models.Model):
+    chat_room = models.ForeignKey(
+        ChatRooms,
         on_delete=models.CASCADE,
+        related_name="message",
     )
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
+    seen = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["timestamp"]
 
     def __str__(self) -> str:
-        return self.contact.user.email
-
-
-class Chat(models.Model):
-    participants = models.ManyToManyField(
-        Contact,
-        related_name="chats",
-    )
-    messages = models.ManyToManyField(
-        Message,
-        blank=True,
-    )
-
-    def __str__(self):
-        return "{}".format(self.pk)
+        return f"Message by {self.user.first_name} at {self.timestamp}"
