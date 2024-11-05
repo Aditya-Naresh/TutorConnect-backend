@@ -1,90 +1,136 @@
-from django.shortcuts import get_object_or_404
-from django.contrib.auth import get_user_model
-from rest_framework.decorators import api_view
+from django.db.models import Q
+from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework import status
+from rest_framework.exceptions import NotFound
+from .models import ChatRooms, Messages
+from .serializers import ChatroomSerializer, MessageSerializer
+import traceback
+from django.utils.crypto import get_random_string
+
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.decorators import (
-    authentication_classes,
-    permission_classes,
-)
+from rest_framework.exceptions import NotAuthenticated
 
 
-from rest_framework import permissions
-from rest_framework.generics import (
-    ListAPIView,
-    RetrieveAPIView,
-    CreateAPIView,
-    DestroyAPIView,
-    UpdateAPIView,
-)
-
-from .models import Chat, Contact
-from .serializers import ChatSerializer
-
-User = get_user_model()
+# Create your views here.
 
 
-@api_view(["GET"])
-def sample_view(request):
-    data = ["foo", "bar", "baz"]
-    return Response(data)
-
-
-@api_view(["GET"])
-@authentication_classes([JWTAuthentication])
-@permission_classes([IsAuthenticated])
-def protected_endpoint(request):
-    return Response({"protected": "data"})
-
-
-class ChatListView(ListAPIView):
-    # queryset= Chat.objects.all()
-    serializer_class = ChatSerializer
+class MessageListView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get_queryset(self):
-        user = self.request.user
-        contact = get_object_or_404(Contact, user=user)
-        queryset = Chat.objects.filter(participants=contact)
-        email = self.request.query_params.get("email", None)
+    def get(self, request, user_id1, user_id2):
+        print("uerid", user_id1)
+        print("uerid", user_id2)
 
-        if email is not None:
-            user = get_object_or_404(User, email=email)
-            contact = get_object_or_404(Contact, user=user)
-            print("queryset_contact", contact)
-            queryset = Chat.objects.filter(participants=contact)
+        if not request.user.is_authenticated:
+            raise NotAuthenticated(
+                detail="User must be authenticated to view messages",
+            )
+        try:
+            chat_room = ChatRooms.objects.filter(
+                Q(user1_id=user_id1, user2_id=user_id2)
+                | Q(user1_id=user_id2, user2_id=user_id1)
+            ).first()  # Use .first() to get a single instance or None
 
-        return queryset
+            if not chat_room:
+                raise NotFound("Room not found")
+
+            messages = Messages.objects.filter(chat_room=chat_room).order_by(
+                "-timestamp"
+            )
+            messages.filter(
+                seen=False,
+            ).exclude(
+                user=request.user,
+            ).update(
+                seen=True,
+            )
+
+            serializer = MessageSerializer(messages, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except ChatRooms.DoesNotExist:
+            return Response(
+                {"detail": "Chat room does not exist"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
 
-class ChatDetailView(RetrieveAPIView):
-    queryset = Chat.objects.all()
-    serializer_class = ChatSerializer
-    permission_classes = [
-        permissions.AllowAny,
-    ]
+class AddChatRoomView(APIView):
+    def post(self, request):
+        try:
+            user_id1 = request.data.get("user_id1")
+            user_id2 = request.data.get("user_id2")
+            print("uesrid", user_id1)
+            print("ownerrid", user_id2)
+
+            if user_id1 == user_id2:
+                return Response(
+                    {"error": "Cannot create chat room with the same user."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            chat_rooms = ChatRooms.objects.filter(
+                Q(user1_id=user_id1, user2_id=user_id2)
+                | Q(user1_id=user_id2, user2_id=user_id1)
+            )
+
+            if chat_rooms.exists():
+                chat_room = chat_rooms.first()
+                serializer = ChatroomSerializer(chat_room)
+                return Response(
+                    serializer.data,
+                    status=status.HTTP_200_OK,
+                )
+
+            else:
+                chat_room = ChatRooms.objects.create(
+                    user1_id=user_id1, user2_id=user_id2
+                )
+                serializer = ChatroomSerializer(chat_room)
+                return Response(
+                    serializer.data,
+                    status=status.HTTP_201_CREATED,
+                )
+
+        except Exception as e:
+            traceback.print_exc()
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
-class ChatCreateView(CreateAPIView):
-    queryset = Chat.objects.all()
-    serializer_class = ChatSerializer
-    permission_classes = [
-        permissions.IsAuthenticated,
-    ]
+class ListChatUsersView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        print("user: ", request.user)
+        users = ChatRooms.objects.filter(
+            Q(user1=request.user) | Q(user2=request.user),
+        )
+
+        if not users.exists():
+            return Response(
+                {"message": "No chat rooms found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = ChatroomSerializer(users, many=True)
+        return Response(
+            serializer.data,
+            status=status.HTTP_200_OK,
+        )
 
 
-class ChatUpdateView(UpdateAPIView):
-    queryset = Chat.objects.all()
-    serializer_class = ChatSerializer
-    permission_classes = [
-        permissions.IsAuthenticated,
-    ]
+class CreateMeetingView(APIView):
+    def post(self, request):
+        print("Request data:", request.data)
+        user_id = request.data.get("userId")
+        recipient_id = request.data.get("recipientId")
+        print("User ID:", user_id)
+        print("Recipient ID:", recipient_id)
+        meeting_id = get_random_string(length=10)
 
-
-class ChatDeleteView(DestroyAPIView):
-    queryset = Chat.objects.all()
-    serializer_class = ChatSerializer
-    permission_classes = [
-        permissions.IsAuthenticated,
-    ]
+        print("Generated Meeting ID:", meeting_id)
+        return Response({"meetingId": meeting_id})
