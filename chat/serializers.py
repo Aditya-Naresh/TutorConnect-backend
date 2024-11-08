@@ -19,10 +19,11 @@ class UserSerializer(serializers.ModelSerializer):
 class ChatroomSerializer(serializers.ModelSerializer):
     user1 = UserSerializer(read_only=True)
     user2 = UserSerializer(read_only=True)
+    unseen_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = ChatRooms
-        fields = ["id", "user1", "user2"]
+        fields = ["id", "user1", "user2", "unseen_count"]
 
 
 class MessageSerializer(serializers.ModelSerializer):
