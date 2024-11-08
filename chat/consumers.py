@@ -2,7 +2,12 @@ import json
 from django.contrib.auth import get_user_model
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
+from asgiref.sync import sync_to_async
 from .models import ChatRooms, Messages
+from django.db.models import Q, Count, Value
+from django.db.models.functions import Coalesce
+from .serializers import ChatroomSerializer
+import asyncio
 
 User = get_user_model()
 
@@ -42,6 +47,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
                 await self.accept()
                 await self.send(text_data=messages)
+                self.keep_alive = asyncio.create_task(self.send_heartbeat())
 
             else:
                 await self.close()
@@ -50,12 +56,22 @@ class ChatConsumer(AsyncWebsocketConsumer):
             await self.close()
 
     async def disconnect(self, code):
+        if hasattr(self, "keep_alive_task"):
+            self.keep_alive.cancel()
         try:
             await self.channel_layer.group_discard(
                 self.room_group_name, self.channel_name
             )
         except Exception as e:
             print(f"Error in disconnect: {str(e)}")
+
+    async def send_heartbeat(self):
+        try:
+            while True:
+                await asyncio.sleep(30)  # Ping every 30 seconds
+                await self.send(text_data=json.dumps({"type": "ping"}))
+        except asyncio.CancelledError as e:
+            print("Cancelled due to: ", {str(e)})
 
     @database_sync_to_async
     def get_or_create_chat_room(self):
@@ -89,6 +105,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def get_messages(self):
         chat_room = self.chat_room[0]
+        Messages.objects.filter(
+            chat_room=chat_room,
+            seen=False,
+        ).exclude(
+            user=self.request_user
+        ).update(seen=True)
         messages = Messages.objects.filter(
             chat_room=chat_room,
         ).order_by("timestamp")
@@ -132,6 +154,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     },
                 )
 
+            recipient_group_name = f"chatNotification_{self.chat_with_user}"
+
+            await self.channel_layer.group_send(
+                recipient_group_name,
+                {"type": "update_unseen_count"},
+            )
+            print("TRIGGERRRRRRR")
+
         except Exception as e:
             await self.send(text_data=json.dumps({"error": str(e)}))
 
@@ -148,4 +178,75 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     "seen": event["seen"],
                 }
             )
+        )
+
+
+class ChatRoomConsumers(AsyncWebsocketConsumer):
+    async def connect(self):
+        try:
+            print("attempting to connect")
+            self.request_user = self.scope["user"]
+            self.room_group_name = f"chatNotification_{self.request_user.id}"
+            print("room mamadfm: ", self.room_group_name)
+
+            await self.channel_layer.group_add(
+                self.room_group_name,
+                self.channel_name,
+            )
+            await self.accept()
+            await self.fetch_updates()
+        except Exception as e:
+            print("Error Occured in connect:", {str(e)})
+            await self.close()
+
+    async def disconnect(self, code):
+        try:
+            await self.channel_layer.group_discard(
+                self.room_group_name,
+                self.channel_name,
+            )
+        except Exception as e:
+            print(f"Error in disconnect: {str(e)}")
+
+    async def send_chat_update(self, event):
+        print("event: ", event)
+        await self.send(text_data=json.dumps(event))
+
+    async def update_unseen_count(self, event):
+        await self.fetch_updates()
+
+    @sync_to_async
+    def get_unseen_counts(self):
+        users = ChatRooms.objects.filter(
+            Q(user1=self.request_user) | Q(user2=self.request_user)
+        ).annotate(
+            unseen_count=Coalesce(
+                Count(
+                    "message",
+                    filter=Q(
+                        message__seen=False,
+                    )
+                    & ~Q(
+                        message__user=self.request_user,
+                    ),
+                ),
+                Value(0),
+            )
+        )
+
+        serializer = ChatroomSerializer(
+            users,
+            many=True,
+        )
+        return serializer.data
+
+    async def fetch_updates(self):
+        data = await self.get_unseen_counts()
+        unseen_contact = sum(1 for contact in data if contact["unseen_count"])
+        print("Unseen_contact:", unseen_contact)
+        await self.send_chat_update(
+            {
+                "data": data,
+                "message_notification": f"{unseen_contact}",
+            }
         )
