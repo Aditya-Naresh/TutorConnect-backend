@@ -18,13 +18,20 @@ class TimeSlots(models.Model):
     start_time = models.DateTimeField()
     end_time = models.DateTimeField(blank=True, null=True)
     subject = models.ForeignKey(
-        Subject, on_delete=models.CASCADE, null=True, blank=True
+        Subject,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
     )
     status = models.CharField(
-        max_length=100, choices=Status.choices, default=Status.AVAILABLE
+        max_length=100,
+        choices=Status.choices,
+        default=Status.AVAILABLE,
     )
     tutor = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name=("tutor_slots")
+        User,
+        on_delete=models.CASCADE,
+        related_name=("tutor_slots"),
     )
     student = models.ForeignKey(
         User,
@@ -32,6 +39,13 @@ class TimeSlots(models.Model):
         blank=True,
         null=True,
         related_name=("student_slots"),
+    )
+    cancelled_by = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True,
+        related_name=("cancelled_slot")
     )
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
