@@ -60,7 +60,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
             self.keep_alive.cancel()
         try:
             await self.channel_layer.group_discard(
-                self.room_group_name, self.channel_name
+                self.room_group_name,
+                self.channel_name,
             )
         except Exception as e:
             print(f"Error in disconnect: {str(e)}")
@@ -98,7 +99,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         return {
             "message_id": message.id,
-            "timestamp": message.timestamp.isoformat(),  # Return the timestamp
+            "timestamp": message.timestamp.isoformat(),
             "seen": message.seen,
         }
 
@@ -160,7 +161,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 recipient_group_name,
                 {"type": "update_unseen_count"},
             )
-            print("TRIGGERRRRRRR")
 
         except Exception as e:
             await self.send(text_data=json.dumps({"error": str(e)}))
@@ -184,10 +184,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
 class ChatRoomConsumers(AsyncWebsocketConsumer):
     async def connect(self):
         try:
-            print("attempting to connect")
             self.request_user = self.scope["user"]
             self.room_group_name = f"chatNotification_{self.request_user.id}"
-            print("room mamadfm: ", self.room_group_name)
 
             await self.channel_layer.group_add(
                 self.room_group_name,
@@ -209,7 +207,6 @@ class ChatRoomConsumers(AsyncWebsocketConsumer):
             print(f"Error in disconnect: {str(e)}")
 
     async def send_chat_update(self, event):
-        print("event: ", event)
         await self.send(text_data=json.dumps(event))
 
     async def update_unseen_count(self, event):
@@ -243,7 +240,6 @@ class ChatRoomConsumers(AsyncWebsocketConsumer):
     async def fetch_updates(self):
         data = await self.get_unseen_counts()
         unseen_contact = sum(1 for contact in data if contact["unseen_count"])
-        print("Unseen_contact:", unseen_contact)
         await self.send_chat_update(
             {
                 "data": data,
