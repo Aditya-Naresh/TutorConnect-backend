@@ -22,7 +22,7 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             self.keep_alive.cancel()
         try:
             await self.channel_layer.group_discard(
-                self.room_group_name,
+                self.group_name,
                 self.channel_name,
             )
         except Exception as e:

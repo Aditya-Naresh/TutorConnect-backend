@@ -87,7 +87,7 @@ class TimeSlots(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:
-        return f"{self.tutor.first_name} : {self.start_time}"
+        return f"{self.pk}:{self.tutor.first_name} : {self.start_time}"
 
 
 # class TuitionRequest(models.Model):
