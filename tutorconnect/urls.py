@@ -39,6 +39,7 @@ urlpatterns = [
     ),
     path("razorpay/", include("api.urls")),
     path("chat/", include("chat.urls")),
+    path("notifications/", include("notifications.urls"))
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

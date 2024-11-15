@@ -35,6 +35,7 @@ class TimeSlotSerializer(serializers.ModelSerializer):
             "tutor_name",
             "rate",
             "subject_name",
+            "cancelled_by"
         ]
 
     def validate(self, data):
