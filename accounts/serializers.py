@@ -160,7 +160,7 @@ class CertificationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Certification
-        fields = ["id", "title", "image", "owner"]
+        fields = ["id", "title", "file", "owner"]
 
     def validate(self, data):
         owner = self.context["request"].user
