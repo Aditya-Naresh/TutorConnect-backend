@@ -30,11 +30,11 @@ from .models import (
 )
 from rest_framework import generics, status
 from .permissions import IsOwnerTutorOnly
-from PIL import Image
-import base64
 from io import BytesIO
 from django.core.files.uploadedfile import InMemoryUploadedFile
 import environ
+import base64
+
 
 env = environ.Env()
 environ.Env.read_env()
@@ -71,10 +71,21 @@ class RegisterUserView(APIView):
                 # Creating Certifications
                 certifications_data = request.data["certifications"]
                 for cert in certifications_data:
-                    image = self._convert_image(cert["image"])
-                    print("image", image)
+                    title = cert["title"]
+                    file = cert["fileBase64"]
+                    print("BASE64: ", file)
+                    if not file:
+                        return Response({"error": "Please submit a valid pdf"})
+
+                    file = self._extract_blob_data(
+                        blob_url=file,
+                        title=title,
+                    )
+
                     certificate = Certification.objects.create(
-                        title=cert["title"], image=image, owner=user
+                        title=title,
+                        file=file,
+                        owner=user,
                     )
 
                     print("certificate:", certificate.title)
@@ -116,26 +127,26 @@ class RegisterUserView(APIView):
         }
         return send_normal_email(mail_data)
 
-    def _convert_image(self, data):
+    def _extract_blob_data(self, blob_url, title):
         try:
-            image_data = data.split(",")[1]
-            bytes_decoded = base64.b64decode(image_data)
-            image = Image.open(BytesIO(bytes_decoded))
-            output = BytesIO()
-            image = image.convert("RGB")
-            image.save(output, format="JPEG")
-            output.seek(0)
+            base64_data = blob_url.split(",")[1]
+            file_data = base64.b64decode(base64_data)
+            file_name = f"{title}.pdf"
+            file_extension = "pdf"
             return InMemoryUploadedFile(
-                output,
-                "ImageField",
-                "temp.jpg",
-                "image/jpeg",
-                output.getbuffer().nbytes,
+                BytesIO(file_data),
+                "FileField",
+                file_name,
+                f"application/{file_extension}",
+                len(file_data),
                 None,
             )
         except Exception as e:
-            print("error:", e)
-            raise ValueError("Invalid Image Format")
+            print("Error processing Blob URL:", {str(e)})
+            raise ValidationError(detail="Error processing the file data")
+        except Exception as e:
+            print("Error processing Blob URL:", {str(e)})
+            raise ValidationError(detail="Error processing file data")
 
 
 #  Mail Confirmation

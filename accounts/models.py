@@ -32,6 +32,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     )
     first_name = models.CharField(max_length=100, verbose_name=_("First Name"))
     last_name = models.CharField(max_length=100, verbose_name=_("Last Name"))
+    profile_pic = models.ImageField(null=True, blank=True)
     # Only used in TutorProfiles
     is_submitted = models.BooleanField(default=False)
     is_approved = models.BooleanField(default=False)
@@ -118,9 +119,9 @@ class Subject(models.Model):
 
 class Certification(models.Model):
     title = models.CharField(max_length=100)
-    image = models.ImageField(
+    file = models.FileField(
         upload_to="certifications/",
-        validators=[FileExtensionValidator(["jpg", "jpeg"])],
+        validators=[FileExtensionValidator(["pdf"])],
     )
     owner = models.ForeignKey(
         User,
@@ -138,16 +139,16 @@ class Certification(models.Model):
         if not self.slug:
             self.slug = slugify(f"{self.owner.id}-{self.title}")
         if self.pk:
-            old_image = Certification.objects.get(pk=self.pk).image
-            if old_image and old_image != self.image:
-                if os.path.isfile(old_image.path):
-                    os.remove(old_image.path)
+            old_file = Certification.objects.get(pk=self.pk).file
+            if old_file and old_file != self.file:
+                if os.path.isfile(old_file.path):
+                    os.remove(old_file.path)
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        if self.image:
-            if os.path.isfile(self.image.path):
-                os.remove(self.image.path)
+        if self.file:
+            if os.path.isfile(self.file.path):
+                os.remove(self.file.path)
 
         super().delete(*args, **kwargs)
 
