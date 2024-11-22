@@ -8,6 +8,7 @@ from rest_framework.exceptions import ValidationError
 from .utils import send_normal_email
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from rest_framework.fields import CurrentUserDefault
+from django.core.validators import RegexValidator
 
 
 # Mail Confirmation Serializer
@@ -37,6 +38,7 @@ class LoginSerializer(serializers.ModelSerializer):
             "role",
             "access_token",
             "refresh_token",
+            "profile_pic",
         ]
 
     def validate(self, attrs):
@@ -67,6 +69,7 @@ class LoginSerializer(serializers.ModelSerializer):
             "role": user.role,
             "access_token": str(user_tokens.get("access")),
             "refresh_token": str(user_tokens.get("refresh")),
+            "profile_pic": user.profile_pic,
         }
 
 
@@ -175,6 +178,44 @@ class CertificationSerializer(serializers.ModelSerializer):
 
 
 class UpdateProfileSerializer(serializers.ModelSerializer):
+    profile_pic = serializers.ImageField(
+        required=False,
+        allow_null=True,
+    )
+    phone_number = serializers.CharField(
+        required=False,
+        allow_null=True,
+        allow_blank=True,
+        validators=[
+            RegexValidator(
+                regex=r"^\+?1?\d{9,15}$",
+                message="Phone number must be in the format: '+999999999'. Up to 15 digits allowed.",
+            )
+        ],
+    )
+
     class Meta:
         model = User
-        fields = "__all__"
+        fields = [
+            "email",
+            "first_name",
+            "last_name",
+            "profile_pic",
+            "rate",
+            "phone_number",
+            "role"
+        ]
+
+    def update(self, instance, validated_data):
+        profile_pic = validated_data.pop("profile_pic", None)
+        print("Profile_PIC", profile_pic)
+        phone_number = validated_data.pop("phone_number", None)
+
+        if profile_pic is not None:
+            instance.profile_pic = profile_pic
+        else:
+            print("No profile_pic provided")
+        if phone_number:
+            instance.phone_number = phone_number.strip()
+
+        return super().update(instance, validated_data)

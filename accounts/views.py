@@ -10,6 +10,7 @@ from .serializers import (
     CertificationSerializer,
     UpdateProfileSerializer,
 )
+from rest_framework.parsers import MultiPartParser, FormParser
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
@@ -275,6 +276,11 @@ class UserDetailsView(generics.RetrieveUpdateDestroyAPIView):
     lookup_field = "id"
     serializer_class = UpdateProfileSerializer
     permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def patch(self, request, *args, **kwargs):
+        print(f"Request data: {request.data}")  # Log the incoming request data
+        return super().patch(request, *args, **kwargs)
 
 
 # Tutor Profile

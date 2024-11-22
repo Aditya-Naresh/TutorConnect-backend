@@ -10,7 +10,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["id", "full_name"]
+        fields = ["id", "full_name", "profile_pic"]
 
     def get_full_name(self, obj):
         return obj.get_full_name()

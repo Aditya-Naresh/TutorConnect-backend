@@ -5,6 +5,7 @@ from .managers import UserManager, ProxyManager
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.core.validators import FileExtensionValidator
 from django.utils.text import slugify
+from phonenumber_field.modelfields import PhoneNumberField
 import os
 
 # Create your models here.
@@ -32,7 +33,17 @@ class User(AbstractBaseUser, PermissionsMixin):
     )
     first_name = models.CharField(max_length=100, verbose_name=_("First Name"))
     last_name = models.CharField(max_length=100, verbose_name=_("Last Name"))
-    profile_pic = models.ImageField(null=True, blank=True)
+    profile_pic = models.ImageField(
+        upload_to="profile_pictures/",
+        null=True,
+        blank=True,
+        validators=[FileExtensionValidator(["jpg", "jpeg", "png"])],
+    )
+    phone_number = PhoneNumberField(
+        null=True,
+        blank=True,
+        verbose_name=_("Phone Number"),
+    )
     # Only used in TutorProfiles
     is_submitted = models.BooleanField(default=False)
     is_approved = models.BooleanField(default=False)
@@ -71,6 +82,20 @@ class User(AbstractBaseUser, PermissionsMixin):
             }
         except Exception as e:
             print("Tokens Error:", e)
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            old_image = User.objects.get(pk=self.pk).profile_pic
+            if old_image and old_image != self.profile_pic:
+                if os.path.isfile(old_image.path):
+                    os.remove(old_image.path)
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        if self.profile_pic:
+            if os.path.isfile(self.profile_pic.pah):
+                os.remove(self.profile_pic.path)
+        super().delete(*args, **kwargs)
 
 
 class Student(User):
