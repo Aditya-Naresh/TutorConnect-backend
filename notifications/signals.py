@@ -61,7 +61,10 @@ def handle_time_slot_notifications(sender, instance, created, **kwargs):
             admins = list(User.objects.filter(role=User.Role.ADMIN))
             target_user = [tutor if cancelled_by == student else student]
             users_to_notify = target_user + admins
-
+        elif instance.status == TimeSlots.Status.REFUNDED:
+            notification_type = Notification.Types.ALERT
+            message = "Money refunded for the cancelled Time Slot"
+            users_to_notify = [student]
         # Create and send notifications to all relevant users
         notification_list = []
         for user in users_to_notify:

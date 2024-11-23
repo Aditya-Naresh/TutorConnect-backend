@@ -18,7 +18,7 @@ class TimeSlotSerializer(serializers.ModelSerializer):
     student_name = serializers.SerializerMethodField()
     tutor_name = serializers.SerializerMethodField()
     subject_name = serializers.SerializerMethodField()
-    rate = serializers.SerializerMethodField()
+    tutor_rate = serializers.SerializerMethodField()
 
     class Meta:
         model = TimeSlots
@@ -35,7 +35,8 @@ class TimeSlotSerializer(serializers.ModelSerializer):
             "tutor_name",
             "rate",
             "subject_name",
-            "cancelled_by"
+            "cancelled_by",
+            "tutor_rate"
         ]
 
     def validate(self, data):
@@ -83,7 +84,7 @@ class TimeSlotSerializer(serializers.ModelSerializer):
     def get_subject_name(self, obj):
         return obj.subject.name if obj.subject else ""
 
-    def get_rate(self, obj):
+    def get_tutor_rate(self, obj):
         return obj.tutor.rate
 
 
