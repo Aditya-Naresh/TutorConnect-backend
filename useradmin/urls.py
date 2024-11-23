@@ -5,6 +5,9 @@ from .views import (
     UserUpdateView,
     SubjectListView,
     CertificationListView,
+    CancelledTimeSlotListView,
+    RefundView,
+    UpdateTimeSlotView,
 )
 
 urlpatterns = [
@@ -37,5 +40,20 @@ urlpatterns = [
         "certificates/<user_id>",
         CertificationListView.as_view(),
         name="certificate-list",
+    ),
+    path(
+        "cancelled_timeslots/",
+        CancelledTimeSlotListView.as_view(),
+        name="cancellation-list",
+    ),
+    path(
+        "refund/",
+        RefundView.as_view(),
+        name="refund",
+    ),
+    path(
+        "updateTimeslot/<id>",
+        UpdateTimeSlotView.as_view(),
+        name="update-timeslot",
     ),
 ]

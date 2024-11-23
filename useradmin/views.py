@@ -1,10 +1,14 @@
 from rest_framework import generics
 from accounts.models import Tutor, Student, User, Subject, Certification
+from timeslots.models import TimeSlots
 from .serializers import (
     UserSerializer,
     SubjectSerializer,
     CertificationSerializer,
+    TimeSlotSerializer,
+    WalletTransactionSerializer,
 )
+from wallets.models import WalletTransaction
 from .permissions import IsAdminUser
 
 # Create your views here.
@@ -42,6 +46,8 @@ class UserUpdateView(generics.RetrieveUpdateAPIView):
 class SubjectListView(generics.ListAPIView):
     serializer_class = SubjectSerializer
     permission_classes = [IsAdminUser]
+    serializer_class = WalletTransactionSerializer
+    queryset = WalletTransaction.objects.all()
 
     def get_queryset(self):
         user = User.objects.get(pk=self.kwargs.get("user_id"))
@@ -55,3 +61,22 @@ class CertificationListView(generics.ListAPIView):
     def get_queryset(self):
         user = User.objects.get(pk=self.kwargs.get("user_id"))
         return Certification.objects.filter(owner=user)
+
+
+class CancelledTimeSlotListView(generics.ListAPIView):
+    serializer_class = TimeSlotSerializer
+    permission_classes = [IsAdminUser]
+    queryset = TimeSlots.objects.filter(status=TimeSlots.Status.CANCELLED)
+
+
+class UpdateTimeSlotView(generics.RetrieveUpdateAPIView):
+    serializer_class = TimeSlotSerializer
+    permission_classes = [IsAdminUser]
+    lookup_field = "id"
+    queryset = TimeSlots.objects.all()
+
+
+class RefundView(generics.CreateAPIView):
+    serializer_class = WalletTransactionSerializer
+    queryset = WalletTransaction.objects.all()
+    permission_classes = [IsAdminUser]
