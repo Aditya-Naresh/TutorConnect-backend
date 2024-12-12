@@ -55,7 +55,7 @@ class TimeSlotSerializer(serializers.ModelSerializer):
             "student",
             "student_name",
             "cancelled_by",
-            "student_wallet"
+            "student_wallet",
         ]
 
     def get_subject_name(self, obj):
@@ -72,7 +72,7 @@ class TimeSlotSerializer(serializers.ModelSerializer):
             return "STUDENT"
         elif obj.tutor == obj.cancelled_by:
             return "TUTOR"
-        
+
     def get_student_wallet(self, obj):
         return Wallet.objects.get(owner=obj.student).pk
 
