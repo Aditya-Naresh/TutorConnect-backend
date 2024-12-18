@@ -8,6 +8,7 @@ class NotifyConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.user = self.scope["user"]
         self.userid = self.user.id
+        self.user_name = f"{self.user.first_name} {self.user.last_name}"
         self.group_name = f"notify_{self.userid}"
 
         await self.channel_layer.group_add(self.group_name, self.channel_name)
@@ -35,6 +36,7 @@ class NotifyConsumer(AsyncWebsocketConsumer):
                     {
                         "type": "send_call_request",
                         "from": self.userid,
+                        "from_user_name": self.user_name,
                         "profile_picture": profile_picture,
                         "timeSlot": self.timeslot,
                     },
@@ -49,6 +51,7 @@ class NotifyConsumer(AsyncWebsocketConsumer):
                     {
                         "type": "send_call_accept",
                         "from": self.userid,
+                        "from_user_name": self.user_name,
                         "timeSlot": timeslot,
                     },
                 )
@@ -60,6 +63,7 @@ class NotifyConsumer(AsyncWebsocketConsumer):
                 {
                     "type": "send_call_end",
                     "from": self.userid,
+                    "from_user_name": self.user_name,
                 },
             )
         elif action == "abandon_call":
@@ -70,6 +74,7 @@ class NotifyConsumer(AsyncWebsocketConsumer):
                 {
                     "type": "send_call_abandoned",
                     "from": self.userid,
+                    "from_user_name": self.user_name,
                 },
             )
         elif action == "offer":
@@ -81,6 +86,7 @@ class NotifyConsumer(AsyncWebsocketConsumer):
                 {
                     "type": "send_offer",
                     "from": self.userid,
+                    "from_user_name": self.user_name,
                     "offer": offer,
                 },
             )
@@ -92,6 +98,7 @@ class NotifyConsumer(AsyncWebsocketConsumer):
                 {
                     "type": "send_answer",
                     "from": self.userid,
+                    "from_user_name": self.user_name,
                     "answer": answer,
                 },
             )
@@ -103,6 +110,7 @@ class NotifyConsumer(AsyncWebsocketConsumer):
                 {
                     "type": "send_ice_candidate",
                     "from": self.userid,
+                    "from_user_name": self.user_name,
                     "candidate": candidate,
                 },
             )
@@ -113,6 +121,7 @@ class NotifyConsumer(AsyncWebsocketConsumer):
                 {
                     "type": "CALL_REQUEST",
                     "from": event["from"],
+                    "from_user_name": event["from_user_name"],
                     "profile_picture": event.get("profile_picture"),
                     "timeSlot": event["timeSlot"],
                 }
@@ -125,6 +134,7 @@ class NotifyConsumer(AsyncWebsocketConsumer):
                 {
                     "type": "CALL_ACCEPTED",
                     "from": event["from"],
+                    "from_user_name": event["from_user_name"],
                     "timeSlot": event["timeSlot"],
                 }
             )
@@ -136,6 +146,7 @@ class NotifyConsumer(AsyncWebsocketConsumer):
                 {
                     "type": "CALL_REJECTED",
                     "from": event["from"],
+                    "from_user_name": event["from_user_name"],
                 }
             )
         )
@@ -146,6 +157,7 @@ class NotifyConsumer(AsyncWebsocketConsumer):
                 {
                     "type": "CALL_ABANDONED",
                     "from": event["from"],
+                    "from_user_name": event["from_user_name"],
                 }
             )
         )
@@ -162,6 +174,7 @@ class NotifyConsumer(AsyncWebsocketConsumer):
                 {
                     "type": "OFFER",
                     "from": event["from"],
+                    "from_user_name": event["from_user_name"],
                     "offer": event["offer"],
                 }
             )
@@ -173,6 +186,7 @@ class NotifyConsumer(AsyncWebsocketConsumer):
                 {
                     "type": "ICE_CANDIDATE",
                     "from": event["from"],
+                    "from_user_name": event["from_user_name"],
                     "candidate": event["candidate"],
                 }
             )
@@ -266,3 +280,45 @@ class VideoCallConsumer(AsyncWebsocketConsumer):
 
     async def send_sdp_message(self, event):
         await self.send(text_data=json.dumps(event["message"]))
+
+
+class BoardConsumer(AsyncWebsocketConsumer):
+    async def websocket_connect(self, event):
+        self.timeSlot = self.scope["url_route"]["kwargs"]["timeSlot"]
+        # Room name for the WebSocket connection
+        self.board_room = f"boardroom_{self.timeSlot}"
+
+        # Add the channel to the group
+        await self.channel_layer.group_add(
+            self.board_room,
+            self.channel_name,
+        )
+
+        # Accept the WebSocket connection
+        await self.accept()
+
+    async def websocket_receive(self, event):
+        # Receive data from the WebSocket
+        text_data = event.get("text", None)
+
+        if text_data:
+            # Broadcast the message to the group
+            await self.channel_layer.group_send(
+                self.board_room,
+                {
+                    "type": "board_message",
+                    "text": text_data,
+                },
+            )
+
+    async def board_message(self, event):
+        # Send the message to the WebSocket
+        await self.send(text_data=event["text"])
+
+    async def websocket_disconnect(self, event):
+        # Remove the channel from the group
+        await self.channel_layer.group_discard(
+            self.board_room,
+            self.channel_name,
+        )
+        print("Disconnected", event)

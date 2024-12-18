@@ -41,7 +41,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     )
     phone_number = PhoneNumberField(
         null=True,
-        blank=True,
+        unique=True,
+        default=None,
         verbose_name=_("Phone Number"),
     )
     # Only used in TutorProfiles
