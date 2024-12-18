@@ -32,7 +32,6 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         try:
             data = json.loads(text_data)
             message = data.get("message")
-            print("Data:", data)
 
             await self.channel_layer.group_send(
                 self.group_name,

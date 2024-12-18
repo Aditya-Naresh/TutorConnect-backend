@@ -31,8 +31,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 ]
                 user_ids = sorted(user_ids)
                 if user_ids[0] == user_ids[1]:
-                    print(user_ids)
-                    print("Tried to create a chat room with single user")
                     await self.close()
 
                 self.room_group_name = f"chat_{user_ids[0]}-{user_ids[1]}"
