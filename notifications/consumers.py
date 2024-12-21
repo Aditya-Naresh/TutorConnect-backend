@@ -6,7 +6,6 @@ from .utils import get_unread_notifications
 
 class NotificationConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        print("Scope:", self.scope)
         self.request_user = self.scope["user"]
         self.group_name = f"notifications_{self.request_user.id}"
 
@@ -16,7 +15,6 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         )
         await self.accept()
         await self.send_unread_notifications()
-        self.keep_alive = asyncio.create_task(self.send_heartbeat())
 
     async def disconnect(self, close_code):
         if hasattr(self, "keep_alive"):
@@ -89,10 +87,4 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             )
         )
 
-    async def send_heartbeat(self):
-        try:
-            while True:
-                await asyncio.sleep(30)  # Ping every 30 seconds
-                await self.send(text_data=json.dumps({"type": "ping"}))
-        except asyncio.CancelledError as e:
-            print("Cancelled due to: ", {str(e)})
+   
