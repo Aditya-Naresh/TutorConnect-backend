@@ -109,6 +109,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
             print(f"Message save error: {e}")
             return None
 
+    async def send_message_history(self, event):
+        await self.send_message_history()
+
     async def send_message_history(self):
         """Fetch and send message history"""
         try:

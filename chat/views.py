@@ -1,45 +1,63 @@
-from django.db.models import Q, Count, Value
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import ChatRooms
-from .serializers import ChatroomSerializer
-from rest_framework.permissions import IsAuthenticated
-from django.db.models.functions import Coalesce
+from rest_framework.parsers import MultiPartParser, FormParser
+from .models import Messages, ChatRooms
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 
-# Create your views here.
+class AttachmentMessageView(APIView):
+    parser_classes = [MultiPartParser, FormParser]
 
+    def post(self, request, *args, **kwargs):
+        # Extract the required data
+        user_id = request.data.get("user")
+        other_user_id = request.data.get("other_user")
+        attachment = request.FILES.get("attachment")
+        print("request attachment:", attachment)
+        user_ids = sorted([user_id, other_user_id])
 
-class ListChatUsersView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        print("user: ", request.user)
-        users = ChatRooms.objects.filter(
-            Q(user1=request.user) | Q(user2=request.user),
-        ).annotate(
-            unseen_count=Coalesce(
-                Count(
-                    "message",
-                    filter=Q(
-                        message__seen=False,
-                    )
-                    & ~Q(
-                        message__user=request.user,
-                    ),
-                ),
-                Value(0),
-            )
-        )
-        if not users.exists():
+        # Validate required fields
+        if not user_ids or not attachment:
             return Response(
-                {"message": "No chat rooms found"},
+                {"error": "chat_room, user, and attachment are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            chat_room = ChatRooms.objects.get(
+                user1_id=user_ids[0],
+                user2_id=user_ids[1],
+            )
+            user = User.objects.get(id=user_id)
+
+        except ChatRooms.DoesNotExist:
+            return Response(
+                {"error": "Chat room not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except User.DoesNotExist:
+            return Response(
+                {"error": "User not found."},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        serializer = ChatroomSerializer(users, many=True)
+        # Create the message
+        message = Messages.objects.create(
+            chat_room=chat_room,
+            user=user,
+            attachment=attachment,
+        )
+
         return Response(
-            serializer.data,
-            status=status.HTTP_200_OK,
+            {
+                "id": message.id,
+                "chat_room": message.chat_room.id,
+                "user": message.user.id,
+                "attachment": message.attachment.url,
+                "timestamp": message.timestamp,
+            },
+            status=status.HTTP_201_CREATED,
         )

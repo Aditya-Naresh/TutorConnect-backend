@@ -27,7 +27,7 @@ class ChatroomSerializer(serializers.ModelSerializer):
 
 
 class MessageSerializer(serializers.ModelSerializer):
-    chat_room = ChatroomSerializer(read_only=True)
+    # chat_room = ChatroomSerializer(read_only=True)
 
     class Meta:
         model = Messages
@@ -36,6 +36,7 @@ class MessageSerializer(serializers.ModelSerializer):
             "chat_room",
             "user",
             "content",
+            "attachment",
             "timestamp",
             "seen",
         ]
