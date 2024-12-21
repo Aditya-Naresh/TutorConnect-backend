@@ -6,6 +6,7 @@ from .utils import get_unread_notifications
 
 class NotificationConsumer(AsyncWebsocketConsumer):
     async def connect(self):
+        print("Scope:", self.scope)
         self.request_user = self.scope["user"]
         self.group_name = f"notifications_{self.request_user.id}"
 

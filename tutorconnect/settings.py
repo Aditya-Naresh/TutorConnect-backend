@@ -23,6 +23,7 @@ ALLOWED_HOSTS = []
 INSTALLED_APPS = [
     "daphne",
     "channels",
+    "django_celery_beat",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -116,7 +117,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+# TIME_ZONE = "UTC"
 
 USE_I18N = True
 
@@ -194,3 +195,20 @@ SIMPLE_JWT = {
 
 TIME_ZONE = "Asia/Kolkata"
 USE_TZ = True
+
+CELERY_BROKER_URL = "redis://localhost:6379/0"
+CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_TIMEZONE = "Asia/Kolkata"
+
+
+CELERY_BEAT_SCHEDULE = {
+    "broadcast-analytics-task": {
+        "task": "useradmin.tasks.broadcast_analytics_task",
+        "schedule": timedelta(seconds=10),
+    },
+}
+
+
+CELERY_TASK_TIME_LIMIT = 300

@@ -65,6 +65,9 @@ def handle_time_slot_notifications(sender, instance, created, **kwargs):
             notification_type = Notification.Types.ALERT
             message = "Money refunded for the cancelled Time Slot"
             users_to_notify = [student]
+        else:
+            return
+
         # Create and send notifications to all relevant users
         notification_list = []
         for user in users_to_notify:

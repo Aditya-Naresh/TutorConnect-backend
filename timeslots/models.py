@@ -15,6 +15,7 @@ class TimeSlots(models.Model):
         COMPLETED = "COMPLETED", "Completed"
         CANCELLED = "CANCELLED", "Cancelled"
         REFUNDED = "REFUNDED", "Refunded"
+        ONGOING = "ONGOING", "Ongoing"
 
     start_time = models.DateTimeField()
     end_time = models.DateTimeField(blank=True, null=True)
