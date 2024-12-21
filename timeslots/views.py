@@ -66,39 +66,6 @@ class TutorListView(generics.ListAPIView):
         return queryset
 
 
-# class TuitionRequestListCreateView(generics.ListCreateAPIView):
-#     serializer_class = TuitionRequestSerializer
-#     permission_classes = [IsAuthenticated]
-
-#     def get_queryset(self):
-#         user = self.request.user
-#         if user.role == "TUTOR":
-#             return TuitionRequest.objects.filter(tutor_viewed=False, tutor=user,)
-#         elif user.role == "STUDENT":
-#             return TuitionRequest.objects.filter(
-#                 tutor_viewed=True, student_viewed=False, student=user
-#             )
-#         else:
-#             return TuitionRequest.objects.none()
-
-
-# class TuitionRequestRetrieveUpdateView(generics.RetrieveUpdateAPIView):
-#     serializer_class = TuitionRequestSerializer
-#     permission_classes = [IsAuthenticated]
-#     lookup_field = "id"
-
-#     def get_queryset(self):
-#         user = self.request.user
-#         if user.role == "TUTOR":
-#             return TuitionRequest.objects.filter(tutor_viewed=False, tutor=user)
-#         elif user.role == "STUDENT":
-#             return TuitionRequest.objects.filter(
-#                 tutor_viewed=True, student_viewed=False, student=user
-#             )
-#         else:
-#             return TuitionRequest.objects.none()
-
-
 class TutorTimeSlotsListView(generics.ListAPIView):
     serializer_class = TimeSlotSerializer
     permission_classes = [StudentPermission]
@@ -153,3 +120,17 @@ class CreateTimeSlotsView(generics.GenericAPIView):
             {"message": message},
             status=status.HTTP_201_CREATED,
         )
+
+
+class TimeSlotHistoryView(generics.ListAPIView):
+    serializer_class = TimeSlotSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user_id = self.kwargs["id"]
+        queryset = TimeSlots.objects.filter(
+            id=user_id,
+            status=TimeSlots.Status.COMPLETED,
+        )
+
+        return queryset

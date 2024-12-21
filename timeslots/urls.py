@@ -7,6 +7,7 @@ from .views import (
     StudentRetrieveUpdateTimeSlotView,
     RetrieveUpdateTimeSlotView,
     CreateTimeSlotsView,
+    TimeSlotHistoryView,
 )
 
 urlpatterns = [
@@ -49,5 +50,10 @@ urlpatterns = [
         "create-timeslots/",
         CreateTimeSlotsView.as_view(),
         name="create-timeslots",
+    ),
+    path(
+        "history/<int:id>/",
+        TimeSlotHistoryView.as_view(),
+        name="history",
     ),
 ]
