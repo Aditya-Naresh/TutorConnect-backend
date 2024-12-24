@@ -3,10 +3,7 @@ from django.dispatch import receiver
 from .models import Notification
 from timeslots.models import TimeSlots
 from django.contrib.auth import get_user_model
-from channels.layers import get_channel_layer
-from asgiref.sync import async_to_sync
-from .serializers import NotificationSerializer
-from .utils import get_unread_notifications
+from .tasks import send_notification_task
 
 User = get_user_model()
 
@@ -29,7 +26,6 @@ def cache_original_times(sender, instance, **kwargs):
 @receiver(post_save, sender=TimeSlots)
 def handle_time_slot_notifications(sender, instance, created, **kwargs):
     if not created:
-        channel_layer = get_channel_layer()
         start_time = instance.start_time.strftime("%H:%M")
         end_time = instance.end_time.strftime("%H:%M")
         day = instance.start_time.strftime("%Y-%m-%d")
@@ -42,7 +38,6 @@ def handle_time_slot_notifications(sender, instance, created, **kwargs):
         if cached_times:
             original_start = cached_times["start_time"]
         if original_start != current_start:
-            # Handle time updates or other status changes if needed
             print("TIME UPDATE")
             notification_type = Notification.Types.UPDATE
             message = f"Updated time of {time} on {day}."
@@ -57,7 +52,6 @@ def handle_time_slot_notifications(sender, instance, created, **kwargs):
             cancelled_by = instance.cancelled_by
             cancelled_by_name = cancelled_by.get_full_name()
             message = f"{cancelled_by_name} cancelled {time} on {day}."
-            # Notify the opposite party and all admins
             admins = list(User.objects.filter(role=User.Role.ADMIN))
             target_user = [tutor if cancelled_by == student else student]
             users_to_notify = target_user + admins
@@ -68,8 +62,6 @@ def handle_time_slot_notifications(sender, instance, created, **kwargs):
         else:
             return
 
-        # Create and send notifications to all relevant users
-        notification_list = []
         for user in users_to_notify:
             notification = Notification.objects.create(
                 user=user,
@@ -77,34 +69,8 @@ def handle_time_slot_notifications(sender, instance, created, **kwargs):
                 message=message,
                 link=link,
             )
-            notification_list.append(notification)
-            print("notification: ", notification)
 
-            # Send notification message through WebSocket
-            serializer = NotificationSerializer(notification)
-            notification_data = serializer.data
-            group_name = f"notifications_{user.id}"
-
-            async_to_sync(channel_layer.group_send)(
-                group_name,
-                {
-                    "type": "notification_message",
-                    "message": notification_data,
-                },
+            send_notification_task.delay(
+                notification.id,
+                user.id,
             )
-
-            # Send unread notifications count or data
-            unread_notifications = async_to_sync(
-                get_unread_notifications,
-            )(user)
-            async_to_sync(channel_layer.group_send)(
-                group_name,
-                {
-                    "type": "unread_notifications",
-                    "notifications": unread_notifications,
-                },
-            )
-
-        print("Notification sent for:", notification_type)
-
-
