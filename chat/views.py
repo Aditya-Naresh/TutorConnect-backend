@@ -16,7 +16,6 @@ class AttachmentMessageView(APIView):
         user_id = request.data.get("user")
         other_user_id = request.data.get("other_user")
         attachment = request.FILES.get("attachment")
-        print("request attachment:", attachment)
         user_ids = sorted([user_id, other_user_id])
 
         # Validate required fields

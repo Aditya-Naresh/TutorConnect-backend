@@ -109,11 +109,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
             print(f"Message save error: {e}")
             return None
 
-    async def send_message_history(self, event):
+    async def send_message_histories(self, event):
         await self.send_message_history()
 
     async def send_message_history(self):
-        """Fetch and send message history"""
         try:
 
             messages = await self.get_messages()
@@ -121,7 +120,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
             await self.mark_messages_as_seen()
             # Send history
             await self.send(
-                text_data=json.dumps({"type": "history", "messages": messages})
+                text_data=json.dumps(
+                    {
+                        "type": "history",
+                        "messages": messages,
+                    }
+                )
             )
         except Exception as e:
             print(f"History send error: {e}")
