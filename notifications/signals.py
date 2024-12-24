@@ -106,3 +106,5 @@ def handle_time_slot_notifications(sender, instance, created, **kwargs):
             )
 
         print("Notification sent for:", notification_type)
+
+

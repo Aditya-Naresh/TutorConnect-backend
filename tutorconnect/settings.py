@@ -1,13 +1,15 @@
 from datetime import timedelta
 import environ
 from pathlib import Path
+import redis
 
 env = environ.Env(DEBUG=(bool, False))
+environ.Env.read_env()
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-environ.Env.read_env()
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
@@ -195,12 +197,14 @@ SIMPLE_JWT = {
 
 TIME_ZONE = "Asia/Kolkata"
 USE_TZ = True
-
-CELERY_BROKER_URL = "redis://localhost:6379/0"
-CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
+BROKER_URL = "redis://localhost:6379/0"
+CELERY_BROKER_URL = BROKER_URL
+CELERY_RESULT_BACKEND = BROKER_URL
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_TIMEZONE = "Asia/Kolkata"
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_BROKER_CONNECTION_TIMEOUT = 30
 
 
 CELERY_BEAT_SCHEDULE = {
@@ -212,3 +216,41 @@ CELERY_BEAT_SCHEDULE = {
 
 
 CELERY_TASK_TIME_LIMIT = 300
+
+
+redis_pool = redis.ConnectionPool(
+    host="localhost",
+    port=6379,
+    db=0,
+    max_connections=10,
+)
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": "redis://localhost:6379/0",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "CONNECTION_POOL": redis_pool,
+        },
+    }
+}
+
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'celery': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}
