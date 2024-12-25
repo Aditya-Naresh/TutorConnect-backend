@@ -1,3 +1,4 @@
+import asyncio
 from channels.generic.websocket import AsyncWebsocketConsumer
 from asgiref.sync import sync_to_async
 import json
@@ -23,12 +24,10 @@ class NotifyConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         data = json.loads(text_data)
         action = data.get("action")
-        print(data)
 
         if action == "call_request":
             target_userid = data.get("target_user")
             self.timeslot = data.get("timeSlot")
-            print("timeslot: ", self.timeslot)
             if self.userid != target_userid:
                 profile_picture = await self.get_profile_picture(self.user)
                 await self.channel_layer.group_send(
@@ -42,7 +41,6 @@ class NotifyConsumer(AsyncWebsocketConsumer):
                     },
                 )
         elif action == "accept_call":
-            print("accepting call")
             target_userid = data.get("target_user")
             timeslot = data.get("timeSlot")
             if target_userid:
@@ -57,7 +55,6 @@ class NotifyConsumer(AsyncWebsocketConsumer):
                 )
         elif action == "reject":
             target_userid = data.get("target_user")
-            print("rejected_by:", self.userid)
             await self.channel_layer.group_send(
                 f"notify_{target_userid}",
                 {
@@ -68,7 +65,6 @@ class NotifyConsumer(AsyncWebsocketConsumer):
             )
         elif action == "abandon_call":
             target_userid = data.get("target_user")
-            print(target_userid)
             await self.channel_layer.group_send(
                 f"notify_{target_userid}",
                 {
@@ -79,7 +75,6 @@ class NotifyConsumer(AsyncWebsocketConsumer):
             )
         elif action == "offer":
             target_userid = data.get("target_user")
-            print(target_userid)
             offer = data.get("offer")
             await self.channel_layer.group_send(
                 f"notify_{target_userid}",
@@ -203,7 +198,6 @@ class VideoCallConsumer(AsyncWebsocketConsumer):
             self.channel_name,
         )
         await self.accept()
-        print(f"WebSocket connection accepted for user: {self.userid}")
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(
@@ -223,7 +217,6 @@ class VideoCallConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         data = json.loads(text_data)
         action = data.get("action")
-        print(data)
 
         if action == "offer":
             self.target_user = data.get("target_user")

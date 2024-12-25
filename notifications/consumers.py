@@ -17,8 +17,6 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         await self.send_unread_notifications()
 
     async def disconnect(self, close_code):
-        if hasattr(self, "keep_alive"):
-            self.keep_alive.cancel()
         try:
             await self.channel_layer.group_discard(
                 self.group_name,
@@ -86,5 +84,3 @@ class NotificationConsumer(AsyncWebsocketConsumer):
                 }
             )
         )
-
-   
