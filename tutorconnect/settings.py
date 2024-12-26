@@ -25,7 +25,7 @@ ALLOWED_HOSTS = []
 INSTALLED_APPS = [
     "daphne",
     "channels",
-    "django_celery_beat",
+    # "django_celery_beat",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -207,12 +207,12 @@ CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 CELERY_BROKER_CONNECTION_TIMEOUT = 30
 
 
-CELERY_BEAT_SCHEDULE = {
-    "broadcast-analytics-task": {
-        "task": "useradmin.tasks.broadcast_analytics_task",
-        "schedule": timedelta(seconds=10),
-    },
-}
+# CELERY_BEAT_SCHEDULE = {
+#     "broadcast-analytics-task": {
+#         "task": "useradmin.tasks.broadcast_analytics_task",
+#         "schedule": timedelta(seconds=10),
+#     },
+# }
 
 
 CELERY_TASK_TIME_LIMIT = 300
