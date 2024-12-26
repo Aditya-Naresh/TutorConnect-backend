@@ -15,11 +15,8 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         )
         await self.accept()
         await self.send_unread_notifications()
-        self.keep_alive = asyncio.create_task(self.send_heartbeat())
 
     async def disconnect(self, close_code):
-        if hasattr(self, "keep_alive"):
-            self.keep_alive.cancel()
         try:
             await self.channel_layer.group_discard(
                 self.group_name,
@@ -32,7 +29,6 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         try:
             data = json.loads(text_data)
             message = data.get("message")
-            print("Data:", data)
 
             await self.channel_layer.group_send(
                 self.group_name,
@@ -88,11 +84,3 @@ class NotificationConsumer(AsyncWebsocketConsumer):
                 }
             )
         )
-
-    async def send_heartbeat(self):
-        try:
-            while True:
-                await asyncio.sleep(30)  # Ping every 30 seconds
-                await self.send(text_data=json.dumps({"type": "ping"}))
-        except asyncio.CancelledError as e:
-            print("Cancelled due to: ", {str(e)})

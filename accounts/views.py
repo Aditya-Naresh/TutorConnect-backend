@@ -11,11 +11,9 @@ from .serializers import (
     UpdateProfileSerializer,
 )
 from rest_framework.parsers import MultiPartParser, FormParser
-from django.contrib.auth.tokens import PasswordResetTokenGenerator
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-from django.utils.encoding import force_bytes, force_str
+from django.utils.http import urlsafe_base64_decode
+from django.utils.encoding import force_str
 from rest_framework.response import Response
-from .utils import send_normal_email
 from django.db import IntegrityError
 from rest_framework.exceptions import ValidationError
 from rest_framework.exceptions import AuthenticationFailed
@@ -34,6 +32,7 @@ from .permissions import IsOwnerTutorOnly
 from io import BytesIO
 from django.core.files.uploadedfile import InMemoryUploadedFile
 import environ
+from .tasks import send_mails_to_user
 import base64
 
 
@@ -65,7 +64,6 @@ class RegisterUserView(APIView):
             user.set_password(password)
             user.is_active = False
             user.save()
-            print("User:", user.pk, user.role)
 
             if is_tutor:
 
@@ -74,7 +72,6 @@ class RegisterUserView(APIView):
                 for cert in certifications_data:
                     title = cert["title"]
                     file = cert["fileBase64"]
-                    print("BASE64: ", file)
                     if not file:
                         return Response({"error": "Please submit a valid pdf"})
 
@@ -83,24 +80,22 @@ class RegisterUserView(APIView):
                         title=title,
                     )
 
-                    certificate = Certification.objects.create(
+                    Certification.objects.create(
                         title=title,
                         file=file,
                         owner=user,
                     )
 
-                    print("certificate:", certificate.title)
                 # Adding subjects
                 subjects_data = request.data["subjects"]
                 for sub in subjects_data:
-                    subject = Subject.objects.create(name=sub, owner=user)
-                    print("subject: ", subject)
+                    Subject.objects.create(name=sub, owner=user)
                 rate = request.data["rate"]
                 user.rate = float(rate)
                 user.is_submitted = True
 
                 user.save()
-            self._send_mail(user)
+            # send_mails_to_user.delay(user.id)
             return Response(
                 {"message": "User created successfully."},
                 status=status.HTTP_201_CREATED,
@@ -112,21 +107,21 @@ class RegisterUserView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-    def _send_mail(self, user):
-        token_generator = PasswordResetTokenGenerator()
-        uid = urlsafe_base64_encode(force_bytes(user.pk))
-        token = token_generator.make_token(user)
-        site_domain = "http://localhost:5173"
-        verification_link = f"{site_domain}/verify-email/{uid}/{token}/"
-        name = f"{user.first_name} {user.last_name}"
-        email_message = f"Hi {name}, Use the link below to verify your email\n"
-        email_body = f"{email_message}{verification_link}"
-        mail_data = {
-            "email_body": email_body,
-            "email_subject": "Email Verification",
-            "to_email": user.email,
-        }
-        return send_normal_email(mail_data)
+    # def _send_mail(self, user):
+    #     token_generator = PasswordResetTokenGenerator()
+    #     uid = urlsafe_base64_encode(force_bytes(user.pk))
+    #     token = token_generator.make_token(user)
+    #     site_domain = "http://localhost:5173"
+    #     verification_link = f"{site_domain}/verify-email/{uid}/{token}/"
+    #     name = f"{user.first_name} {user.last_name}"
+    #     email_message = f"Hi {name}, Use the link below to verify your email\n"
+    #     email_body = f"{email_message}{verification_link}"
+    #     mail_data = {
+    #         "email_body": email_body,
+    #         "email_subject": "Email Verification",
+    #         "to_email": user.email,
+    #     }
+    #     send_normal_mail.delay(mail_data)
 
     def _extract_blob_data(self, blob_url, title):
         try:
@@ -186,7 +181,6 @@ class LoginUserView(GenericAPIView):
     queryset = User.objects.all()
 
     def post(self, request):
-        print("REQUEST:", request)
         serializer = self.serializer_class(
             data=request.data, context={"request": request}
         )
@@ -334,7 +328,6 @@ class GoogleAuthenticationView(APIView):
             user = User.objects.get(email=email)
             # if user.auth_provider == User.a
             data = self._login(user)
-            print("Data: ", data)
             if "error" in data:
                 return Response(data, status=status.HTTP_403_FORBIDDEN)
             return Response(data, status=status.HTTP_200_OK)
