@@ -1,9 +1,6 @@
 from rest_framework import serializers
 from .models import Messages, ChatRooms
-from django.contrib.auth import get_user_model
-
-User = get_user_model()
-
+from accounts.models import User
 
 class UserSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()

@@ -1,0 +1,119 @@
+name: Deploy Django App to Azure VM
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout code
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+     
+      - name: Create .env File from Secrets
+        run: |
+         
+         
+        #  echo "DB_HOST=${{ secrets.DB_HOST }}" >> .env
+        #   echo "DB_NAME=${{ secrets.DB_NAME }}" >> .env
+        #   echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+        #   echo "DB_USER=${{ secrets.DB_USER }}" >> .env
+          echo "EMAIL_BACKEND=${{ secrets.EMAIL_BACKEND }}" >> .env
+          echo "EMAIL_HOST=${{ secrets.EMAIL_HOST }}" >> .env
+          echo "EMAIL_USE_TLS=${{ secrets.EMAIL_USE_TLS }}" >> .env
+          echo "EMAIL_PORT=${{ secrets.EMAIL_PORT }}" >> .env
+          echo "EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }}" >> .env
+          echo "EMAIL_HOST_PASSWORD=${{ secrets.EMAIL_HOST_PASSWORD }}" >> .env
+          echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> .env
+          echo "DEBUG=${{ secrets.DEBUG }}" >> .env
+          echo "PUBLIC_KEY=${{ secrets.PUBLIC_KEY }}" >> .env
+          echo "RAZORPAY_SECRET_KEY=${{ secrets.RAZORPAY_SECRET_KEY }}" >> .env
+          echo "GOOGLE_AUTH_PASSWORD=${{ secrets.GOOGLE_AUTH_PASSWORD }}" >> .env
+          echo "FRONTEND=${{ secrets.FRONTEND }}" >> .env
+
+      # Docker login to DockerHub
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # Build and Push Docker Images
+      - name: Build and Push Docker Images
+        run: |
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/tutorconnect-backend-web:latest --build-arg SERVICE=web .
+          docker push ${{ secrets.DOCKER_USERNAME }}/tutorconnect-backend-web:latest
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/tutorconnect-backend-celery:latest --build-arg SERVICE=celery .
+          docker push ${{ secrets.DOCKER_USERNAME }}/tutorconnect-backend-celery:latest
+          
+
+      # Deploy to Azure VM using Docker Run
+      - name: Deploy to Azure VM
+        env:
+          VM_KEY: ${{ secrets.VM_KEY }}
+          VM_IP: ${{ secrets.VM_IP }}
+          VM_USER: ${{ secrets.VM_USER }}
+        run: |
+          # Create SSH key file
+          echo "$VM_KEY" > azure-vm-key.pem
+          chmod 600 azure-vm-key.pem 
+
+          # Transfer .env file to Azure VM
+          scp -o StrictHostKeyChecking=no -i azure-vm-key.pem .env "$VM_USER@$VM_IP:/home/$VM_USER/.env"
+
+          # Connect to Azure VM and deploy
+          ssh -o StrictHostKeyChecking=no -i azure-vm-key.pem "$VM_USER@$VM_IP" << EOF
+            set -e
+            echo "Starting deployment on Azure VM..."
+
+            # Docker login
+            echo "${{ secrets.DOCKER_PASSWORD }}" | sudo docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+            # Stop and remove existing containers if they exist
+            docker rm -f tutorconnect-backend-web || true
+            docker rm -f tutorconnect-backend-celery || true
+            docker rm -f redis || true
+
+            # Cleanup unused Docker resources
+            docker system prune -a -f
+
+            # Create Docker network if it doesn't exist
+            docker network create friendbook-network || true
+
+            # Pull the latest Docker images
+            docker pull ${{ secrets.DOCKER_USERNAME }}/tutorconnect-backend-web:latest
+            docker pull ${{ secrets.DOCKER_USERNAME }}/tutorconnect-backend-celery:latest
+
+            # Start Redis container
+            echo "Starting Redis container..."
+            docker run -d --name redis --network friendbook-network -p 6379:6379 redis:alpine
+
+            # Start Django container
+            echo "Starting Django container..."
+            docker run -d --name tutorconnect-backend-web \
+              --network friendbook-network \
+              -p 8000:8000 \
+              --env-file /home/$VM_USER/.env \
+              ${{ secrets.DOCKER_USERNAME }}/tutorconnect-backend-web:latest
+
+            # Start Celery worker container
+            echo "Starting Celery worker container..."
+            docker run -d --name tutorconnect-backend-celery \
+              --network friendbook-network \
+              --env-file /home/$VM_USER/.env \
+              ${{ secrets.DOCKER_USERNAME }}/tutorconnect-backend-celery:latest \
+              celery -A mysite worker --loglevel=info
+
+            echo "Deployment complete!"
+          EOF

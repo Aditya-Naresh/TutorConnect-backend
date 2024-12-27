@@ -3,9 +3,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser
 from .models import Messages, ChatRooms
-from django.contrib.auth import get_user_model
+from accounts.models import User
 
-User = get_user_model()
 
 
 class AttachmentMessageView(APIView):

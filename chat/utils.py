@@ -3,10 +3,7 @@ from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 from django.conf import settings
 from channels.db import database_sync_to_async
-from django.contrib.auth import get_user_model
-
-User = get_user_model()
-
+from accounts.models import User
 
 class JwtAuthentication(BaseAuthentication):
 

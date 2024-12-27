@@ -1,6 +1,5 @@
 import base64
 import json
-from django.contrib.auth import get_user_model
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from asgiref.sync import sync_to_async
@@ -10,8 +9,6 @@ from django.db.models.functions import Coalesce
 from .serializers import ChatroomSerializer
 import uuid
 from django.core.files.base import ContentFile
-
-User = get_user_model()
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
