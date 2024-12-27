@@ -1,5 +1,4 @@
 from django.urls import path
-<<<<<<< HEAD
 from .views import (
     RegisterUserView,
     EmailConfirmationView,
@@ -44,9 +43,4 @@ urlpatterns = [
         GoogleAuthenticationView.as_view(),
         name="google-auth",
     ),
-=======
-from . views import RegisterUserView
-urlpatterns = [
-    path("signup/", RegisterUserView.as_view(), name='register_user')
->>>>>>> a85a3b13 (User Registration endpoint completed)
 ]

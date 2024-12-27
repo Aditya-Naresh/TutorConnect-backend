@@ -238,38 +238,37 @@ CELERY_TASK_TIME_LIMIT = 300
 
 
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {
-            'level': 'DEBUG',
-            'class': 'logging.StreamHandler',
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "level": "DEBUG",
+            "class": "logging.StreamHandler",
         },
     },
-    'loggers': {
-        'celery': {
-            'handlers': ['console'],
-            'level': 'DEBUG',
-            'propagate': True,
+    "loggers": {
+        "celery": {
+            "handlers": ["console"],
+            "level": "DEBUG",
+            "propagate": True,
         },
     },
 }
 
 
-
 # Azure storage settings
-AZURE_ACCOUNT_KEY = env('AZURE_ACCOUNT_KEY')
-AZURE_ACCOUNT_NAME = env('AZURE_ACCOUNT_NAME', 'friendbookstorage')
-AZURE_STATIC_CONTAINER = 'static'
-AZURE_MEDIA_CONTAINER = 'media'
-AZURE_CONNECTION_STRING = env('AZURE_CONNECTION_STRING')
+AZURE_ACCOUNT_KEY = env("AZURE_ACCOUNT_KEY")
+AZURE_ACCOUNT_NAME = env("AZURE_ACCOUNT_NAME", "friendbookstorage")
+AZURE_STATIC_CONTAINER = "static"
+AZURE_MEDIA_CONTAINER = "media"
+AZURE_CONNECTION_STRING = env("AZURE_CONNECTION_STRING")
 
 AZURE_CUSTOM_DOMAIN = f"{AZURE_ACCOUNT_NAME}.blob.core.windows.net"
 
 # Media files configuration
-DEFAULT_FILE_STORAGE = 'tutorconnect.storage_backends.CustomAzureMediaStorage'
+DEFAULT_FILE_STORAGE = "tutorconnect.storage_backends.CustomAzureMediaStorage"
 MEDIA_URL = f"https://{AZURE_CUSTOM_DOMAIN}/{AZURE_MEDIA_CONTAINER}/"
 
 # Static files configuration
-STATICFILES_STORAGE = 'tutorconnect.storage_backends.CustomAzureStaticStorage'
+STATICFILES_STORAGE = "tutorconnect.storage_backends.CustomAzureStaticStorage"
 STATIC_URL = f"https://{AZURE_CUSTOM_DOMAIN}/{AZURE_STATIC_CONTAINER}/"

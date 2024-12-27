@@ -16,7 +16,6 @@ Including another URLconf
 """
 
 from django.contrib import admin
-<<<<<<< HEAD
 from django.urls import path, include
 from rest_framework_simplejwt import views as jwt_views
 from django.conf import settings
@@ -41,13 +40,6 @@ urlpatterns = [
     path("razorpay/", include("api.urls")),
     path("chat/", include("chat.urls")),
     path("notifications/", include("notifications.urls"))
-=======
-from django.urls import path,include
-
-urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('accounts/', include("accounts.urls")),
->>>>>>> a85a3b13 (User Registration endpoint completed)
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
