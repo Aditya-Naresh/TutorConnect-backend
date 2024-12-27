@@ -41,6 +41,8 @@ jobs:
           echo "RAZORPAY_SECRET_KEY=${{ secrets.RAZORPAY_SECRET_KEY }}" >> .env
           echo "GOOGLE_AUTH_PASSWORD=${{ secrets.GOOGLE_AUTH_PASSWORD }}" >> .env
           echo "FRONTEND=${{ secrets.FRONTEND }}" >> .env
+          echo "AZURE_KEY=${{ secrets.AZURE_KEY }}" >> .env
+          echo "AZURE_CONNECTION_STRING=${{ secrets.AZURE_CONNECTION_STRING }}" >> .env
 
       # Docker login to DockerHub
       - name: Login to DockerHub
