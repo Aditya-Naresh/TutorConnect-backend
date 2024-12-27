@@ -1,5 +1,10 @@
 from django.contrib import admin
+<<<<<<< HEAD
 from .models import User, Student, Tutor, Subject, Certification
+=======
+from . models import User, Student, Tutor
+
+>>>>>>> a85a3b13 (User Registration endpoint completed)
 
 
 # Register your models here.

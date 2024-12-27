@@ -20,15 +20,9 @@ jobs:
         with:
           python-version: '3.11'
 
-     
+      # Create .env File from Secrets
       - name: Create .env File from Secrets
         run: |
-         
-         
-        #  echo "DB_HOST=${{ secrets.DB_HOST }}" >> .env
-        #   echo "DB_NAME=${{ secrets.DB_NAME }}" >> .env
-        #   echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
-        #   echo "DB_USER=${{ secrets.DB_USER }}" >> .env
           echo "EMAIL_BACKEND=${{ secrets.EMAIL_BACKEND }}" >> .env
           echo "EMAIL_HOST=${{ secrets.EMAIL_HOST }}" >> .env
           echo "EMAIL_USE_TLS=${{ secrets.EMAIL_USE_TLS }}" >> .env
@@ -58,7 +52,6 @@ jobs:
           docker push ${{ secrets.DOCKER_USERNAME }}/tutorconnect-backend-web:latest
           docker build -t ${{ secrets.DOCKER_USERNAME }}/tutorconnect-backend-celery:latest --build-arg SERVICE=celery .
           docker push ${{ secrets.DOCKER_USERNAME }}/tutorconnect-backend-celery:latest
-          
 
       # Deploy to Azure VM using Docker Run
       - name: Deploy to Azure VM

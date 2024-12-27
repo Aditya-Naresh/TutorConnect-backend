@@ -1,4 +1,5 @@
 from django.conf import settings
+<<<<<<< HEAD
 from django.core.mail import EmailMessage, BadHeaderError
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode
@@ -69,3 +70,18 @@ def send_verification_email(user_id):
         to=[user.email],
     )
     email.send(fail_silently=False)
+=======
+from django.core.mail import EmailMessage
+
+
+
+def send_normal_email(data):
+    
+    email = EmailMessage(
+        subject = data['email_subject'],
+        body = data['email_body'],
+        from_email = settings.EMAIL_HOST_USER,
+        to = [data['to_email']]
+    )
+    email.send()
+>>>>>>> a85a3b13 (User Registration endpoint completed)
