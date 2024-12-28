@@ -108,7 +108,7 @@ jobs:
               --network friendbook-network \
               --env-file /home/$VM_USER/.env \
               ${{ secrets.DOCKER_USERNAME }}/tutorconnect-backend-celery:latest \
-              celery -A mysite worker --loglevel=info
+              celery -A tutorconnect worker --loglevel=info
 
             echo "Deployment complete!"
           EOF
