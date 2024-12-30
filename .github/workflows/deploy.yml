@@ -1,4 +1,4 @@
-name: Deploy Django App to Azure VM
+name: Deploy TutorConnect Django App to Azure VM
 
 on:
   push:
@@ -30,6 +30,10 @@ jobs:
           echo "EMAIL_HOST_USER=${{ secrets.EMAIL_HOST_USER }}" >> .env
           echo "EMAIL_HOST_PASSWORD=${{ secrets.EMAIL_HOST_PASSWORD }}" >> .env
           echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> .env
+          echo "DB_HOST=${{ secrets.DB_HOST }}" >> .env
+          echo "DB_NAME=${{ secrets.DB_NAME }}" >> .env
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+          echo "DB_USER=${{ secrets.DB_USER }}" >> .env
           echo "DEBUG=${{ secrets.DEBUG }}" >> .env
           echo "PUBLIC_KEY=${{ secrets.PUBLIC_KEY }}" >> .env
           echo "RAZORPAY_SECRET_KEY=${{ secrets.RAZORPAY_SECRET_KEY }}" >> .env
@@ -84,7 +88,7 @@ jobs:
             docker system prune -a -f
 
             # Create Docker network if it doesn't exist
-            docker network create friendbook-network || true
+            docker network create tutorconnect-network || true
 
             # Pull the latest Docker images
             docker pull ${{ secrets.DOCKER_USERNAME }}/tutorconnect-backend-web:latest
@@ -92,12 +96,12 @@ jobs:
 
             # Start Redis container
             echo "Starting Redis container..."
-            docker run -d --name redis --network friendbook-network -p 6379:6379 redis:alpine
+            docker run -d --name redis --network tutorconnect-network -p 6379:6379 redis:alpine
 
             # Start Django container
             echo "Starting Django container..."
             docker run -d --name tutorconnect-backend-web \
-              --network friendbook-network \
+              --network tutorconnect-network \
               -p 8000:8000 \
               --env-file /home/$VM_USER/.env \
               ${{ secrets.DOCKER_USERNAME }}/tutorconnect-backend-web:latest
@@ -105,10 +109,14 @@ jobs:
             # Start Celery worker container
             echo "Starting Celery worker container..."
             docker run -d --name tutorconnect-backend-celery \
-              --network friendbook-network \
+              --network tutorconnect-network \
               --env-file /home/$VM_USER/.env \
               ${{ secrets.DOCKER_USERNAME }}/tutorconnect-backend-celery:latest \
               celery -A tutorconnect worker --loglevel=info
+
+            # Run Django migrations
+            echo "Running Django migrations..."
+            docker exec tutorconnect-backend-web python manage.py migrate --noinput
 
             echo "Deployment complete!"
           EOF

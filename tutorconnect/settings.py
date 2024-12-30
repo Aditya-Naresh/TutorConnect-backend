@@ -17,7 +17,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = env("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env("DEBUG")
-ALLOWED_HOSTS = ["tutorconnect.codewithjoe.in", "4.240.107.99"]
+ALLOWED_HOSTS = ["tutorconnect.codewithjoe.in", "4.240.107.99", "http://127.0.0.1", "localhost"]
 
 
 # Application definition
@@ -98,10 +98,10 @@ CHANNEL_LAYERS = {
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "postgres",
-        "USER": "tutorconnect_db_admin",
-        "PASSWORD": "Pass1234$",
-        "HOST": "tutor-connectdb.postgres.database.azure.com",
+        "NAME": env("DB_NAME"),
+        "USER": env("DB_USER"),
+        "PASSWORD": env("DB_PASSWORD"),
+        "HOST": env("DB_HOST"),
         "PORT": "5432",
     }
 }
