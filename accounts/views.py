@@ -32,7 +32,6 @@ from .permissions import IsOwnerTutorOnly
 from io import BytesIO
 from django.core.files.uploadedfile import InMemoryUploadedFile
 import environ
-from .tasks import send_mails_to_user
 import base64
 
 
@@ -106,22 +105,6 @@ class RegisterUserView(APIView):
                 {"error": "Failed to create user. Please try again."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-
-    # def _send_mail(self, user):
-    #     token_generator = PasswordResetTokenGenerator()
-    #     uid = urlsafe_base64_encode(force_bytes(user.pk))
-    #     token = token_generator.make_token(user)
-    #     site_domain = "http://localhost:5173"
-    #     verification_link = f"{site_domain}/verify-email/{uid}/{token}/"
-    #     name = f"{user.first_name} {user.last_name}"
-    #     email_message = f"Hi {name}, Use the link below to verify your email\n"
-    #     email_body = f"{email_message}{verification_link}"
-    #     mail_data = {
-    #         "email_body": email_body,
-    #         "email_subject": "Email Verification",
-    #         "to_email": user.email,
-    #     }
-    #     send_normal_mail.delay(mail_data)
 
     def _extract_blob_data(self, blob_url, title):
         try:
