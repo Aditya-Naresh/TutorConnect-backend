@@ -48,7 +48,7 @@ TutorConnect is a platform that connects tutors with students for online learnin
    cd tutorconnect-backend
    ```
 
-2. Create a [.env](http://_vscodecontentref_/1) file in the [tutorconnect](http://_vscodecontentref_/2) directory with the following content:
+2. Create a [.env] file in the [tutorconnect] directory with the following content:
 
    ```env
    EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
@@ -59,7 +59,7 @@ TutorConnect is a platform that connects tutors with students for online learnin
    EMAIL_HOST_PASSWORD=your-email-password
    SECRET_KEY=your-secret-key
    DEBUG=True
-   FRONTEND=https://tutor-connect-ruddy.vercel.app
+   FRONTEND=your-local-frontend-link
    AZURE_KEY=your-azure-key
    AZURE_ACCOUNT_NAME=your-azure-account-name
    AZURE_CONNECTION_STRING=your-azure-connection-string
@@ -163,10 +163,8 @@ The project is set up to be deployed using Docker and Azure VM. The deployment p
    - `AZURE_KEY`
    - `AZURE_CONNECTION_STRING`
 
-2. The deployment workflow is defined in [deploy.yml](http://_vscodecontentref_/3). It builds and pushes Docker images, then deploys them to the Azure VM.
+2. The deployment workflow is defined in [deploy.yml]. It builds and pushes Docker images, then deploys them to the Azure VM.
 
 3. To trigger a deployment, push changes to the `main` branch.
 
-## License
 
-This project is licensed under the MIT License.
