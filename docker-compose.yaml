@@ -13,6 +13,7 @@ services:
       - DJANGO_SETTINGS_MODULE=tutorconnect.settings
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+  # Add DB Details when the Backend is down.
     depends_on:
       - redis
 
